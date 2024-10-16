@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Product>Drupal</Product>
+        <Description>Drupal is a flexible and scalable open source platform for creating digital experiences.</Description>
+        <Version>1.0.0</Version>
+        <PackageId>Apps.Drupal</PackageId>
+        <AssemblyName>Apps.Drupal</AssemblyName>
+        <RootNamespace>Apps.Drupal</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Blackbird.Applications.Sdk.Common" Version="2.10.0" />
+        <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.0.2-alpha2" />
+        <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.0.25" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\README.md">
+        <Link>README.md</Link>
+      </Content>
+    </ItemGroup>
+
+</Project>

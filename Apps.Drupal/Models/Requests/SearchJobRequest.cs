@@ -6,7 +6,7 @@ namespace Apps.Drupal.Models.Requests;
 
 public class SearchJobRequest
 {
-    [Display("State", Description = "Specify the state of the job"), StaticDataSource(typeof(JobStateDataHandler))]
+    [Display("State", Description = "Specify the state of the job. By default it will return only active jobs"), StaticDataSource(typeof(JobStateDataHandler))]
     public string? State { get; set; }
     
     [Display("Created after", Description = "Specify the date after which the job was created")]

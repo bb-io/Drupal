@@ -9,6 +9,7 @@ using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Newtonsoft.Json;
 using RestSharp;
 
 namespace Apps.Drupal.Actions;
@@ -29,14 +30,22 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         if (filterRequest.CreatedAfter.HasValue)
         {
             var unixTimestamp = ((DateTimeOffset)filterRequest.CreatedAfter.Value).ToUnixTimeSeconds();
-            request.AddQueryParameter("created_after", unixTimestamp.ToString());
+            request.AddQueryParameter("created", unixTimestamp.ToString());
         }
         
-        var jobs = await Client.ExecuteWithErrorHandling<Dictionary<string, JobResponse>>(request);
+        var jobsResponse = await Client.ExecuteWithErrorHandling(request);
+        
+        var jobs = new List<JobResponse>();
+        
+        if(jobsResponse.Content!.StartsWith("{") && jobsResponse.Content!.EndsWith("}")) // If there is no jobs, the response will be a collection of objects, if response contains jobs, it will be a dictionary
+        {
+            var deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, JobResponse>>(jobsResponse.Content)!;
+            jobs = deserializedResponse.Values.ToList();
+        }
         
         return new JobSearchResponse
         {
-            Items = jobs.Values.ToList(),
+            Items = jobs,
             Total = jobs.Count
         };
     }

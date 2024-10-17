@@ -44,7 +44,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
     [Action("Get XLIFF from job", Description = "Get XLIFF file from job")]
     public async Task<FileReference> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
-        var request = new ApiRequest($"/api/tmgmt/blackbird/jobs/{identifier}", Method.Get, Creds);
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{identifier}", Method.Get, Creds);
         var response = await Client.ExecuteWithErrorHandling(request);
         var xliff = response.Content!;
         
@@ -58,7 +58,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         var stream = await fileManagementClient.DownloadAsync(request.File);
         var xliff = await new StreamReader(stream).ReadToEndAsync();
 
-        var apiRequest = new ApiRequest($"/api/tmgmt/blackbird/jobs/{request.JobId}", Method.Post, Creds)
+        var apiRequest = new ApiRequest($"/api/tmgmt/blackbird/job/{request.JobId}", Method.Post, Creds)
             .AddHeader("Content-Type", "application/xml")
             .AddBody(xliff);
         

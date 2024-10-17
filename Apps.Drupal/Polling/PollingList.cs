@@ -1,6 +1,5 @@
 ﻿using Apps.Drupal.Api;
 using Apps.Drupal.Invocables;
-using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Invocation;
@@ -13,23 +12,23 @@ namespace Apps.Drupal.Polling;
 [PollingEventList]
 public class PollingList(InvocationContext invocationContext) : AppInvocable(invocationContext)
 {
-    [PollingEvent("On translation job requested",
+    [PollingEvent("On translation jobs requested",
         Description = "Returns translation jobs that were requested after the last polling time")]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
         PollingEventRequest<DateMemory> request)
     {
-        var jobs = await SearchJobsAsync(new SearchJobRequest { CreatedAfter = request.Memory?.LastPollingTime });
-        
-        if(request.Memory is null)
+        if(request.Memory == null)
         {
             return new PollingEventResponse<DateMemory, JobSearchResponse>
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastPollingTime = DateTime.Now },
-                Result = jobs
+                Result = null
             };
         }
         
+        var jobs = await SearchJobsAsync(request.Memory.LastPollingTime);
+
         return new PollingEventResponse<DateMemory, JobSearchResponse>
         {
             FlyBird = jobs.Total > 0,
@@ -38,25 +37,16 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         };
     }
     
-    private async Task<JobSearchResponse> SearchJobsAsync(SearchJobRequest filterRequest)
+    private async Task<JobSearchResponse> SearchJobsAsync(DateTime lastPollingTime)
     {
-        var request = new ApiRequest("/api/tmgmt/blackbird/jobs", Method.Get, Creds);
-
-        if (filterRequest.State != null)
-        {
-            request.AddQueryParameter("state", filterRequest.State);
-        }
-
-        if (filterRequest.CreatedAfter.HasValue)
-        {
-            var unixTimestamp = ((DateTimeOffset)filterRequest.CreatedAfter.Value).ToUnixTimeSeconds();
-            request.AddQueryParameter("created", unixTimestamp.ToString());
-        }
+        var unixTimestamp = ((DateTimeOffset)lastPollingTime).ToUnixTimeSeconds();
+        
+        var request = new ApiRequest("/api/tmgmt/blackbird/jobs", Method.Get, Creds)
+            .AddQueryParameter("created", unixTimestamp.ToString());
         
         var jobsResponse = await Client.ExecuteWithErrorHandling(request);
         
         var jobs = new List<JobResponse>();
-        
         if(jobsResponse.Content!.StartsWith("{") && jobsResponse.Content!.EndsWith("}")) // If there is no jobs, the response will be a collection of objects, if response contains jobs, it will be a dictionary
         {
             var deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, JobResponse>>(jobsResponse.Content)!;

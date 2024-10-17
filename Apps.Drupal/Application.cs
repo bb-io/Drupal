@@ -6,7 +6,7 @@ public class Application : IApplication
 {
     public string Name
     {
-        get => "App";
+        get => "Drupal";
         set { }
     }
 

@@ -13,7 +13,7 @@ public class ConnectionValidator: IConnectionValidator
     {
         var credentialsProviders = authenticationCredentialsProviders as AuthenticationCredentialsProvider[] ?? authenticationCredentialsProviders.ToArray();
         var client = new ApiClient(credentialsProviders);
-        await client.ExecuteWithErrorHandling(new ApiRequest("/api/tmgmt/blackbird/jobs", Method.Get, credentialsProviders));
+        await client.ExecuteWithErrorHandling(new ApiRequest("/api/tmgmt/blackbird/languages", Method.Get, credentialsProviders));
         return new ConnectionValidationResponse()
         {
             IsValid = true

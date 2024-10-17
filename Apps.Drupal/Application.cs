@@ -1,8 +1,9 @@
 ﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common.Metadata;
 
 namespace Apps.Drupal;
 
-public class Application : IApplication
+public class Application : IApplication, ICategoryProvider
 {
     public string Name
     {
@@ -13,5 +14,11 @@ public class Application : IApplication
     public T GetInstance<T>()
     {
         throw new NotImplementedException();
+    }
+
+    public IEnumerable<ApplicationCategory> Categories
+    {
+        get => new [] { ApplicationCategory.Cms };
+        set { }
     }
 }

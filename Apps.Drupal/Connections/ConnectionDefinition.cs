@@ -16,7 +16,7 @@ public class ConnectionDefinition : IConnectionDefinition
         },
         new ConnectionProperty(CredsNames.ApiKey)
         {
-            DisplayName = "Api key",
+            DisplayName = "API key",
             Description = "Api key for the authentication",
             Sensitive = false
         }

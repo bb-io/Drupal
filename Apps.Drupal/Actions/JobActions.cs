@@ -33,6 +33,11 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
             request.AddQueryParameter("created", unixTimestamp.ToString());
         }
         
+        if(filterRequest.TargetLanguage != null)
+        {
+            request.AddQueryParameter("target", filterRequest.TargetLanguage);
+        }
+        
         var jobsResponse = await Client.ExecuteWithErrorHandling(request);
         
         var jobs = new List<JobResponse>();

@@ -2,6 +2,7 @@
 using Apps.Drupal.Invocables;
 using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling.Models;
+using Apps.Drupal.Polling.Models.Requests;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Newtonsoft.Json;
@@ -15,7 +16,8 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
     [PollingEvent("On translation jobs requested",
         Description = "Returns translation jobs that were requested after the last polling time")]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
-        PollingEventRequest<DateMemory> request)
+        PollingEventRequest<DateMemory> request,
+        [PollingEventParameter] TranslationJobsPollingParameters parameters)
     {
         if(request.Memory == null)
         {
@@ -27,7 +29,7 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
             };
         }
         
-        var jobs = await SearchJobsAsync(request.Memory.LastPollingTime);
+        var jobs = await SearchJobsAsync(request.Memory.LastPollingTime, parameters.TargetLanguages);
 
         return new PollingEventResponse<DateMemory, JobSearchResponse>
         {
@@ -37,7 +39,7 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         };
     }
     
-    private async Task<JobSearchResponse> SearchJobsAsync(DateTime lastPollingTime)
+    private async Task<JobSearchResponse> SearchJobsAsync(DateTime lastPollingTime, IEnumerable<string>? targetLanguages)
     {
         var unixTimestamp = ((DateTimeOffset)lastPollingTime).ToUnixTimeSeconds();
         
@@ -51,6 +53,11 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         {
             var deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, JobResponse>>(jobsResponse.Content)!;
             jobs = deserializedResponse.Values.ToList();
+        }
+
+        if (targetLanguages != null)
+        {
+            jobs = jobs.Where(job => targetLanguages.Contains(job.Target)).ToList();
         }
         
         return new JobSearchResponse

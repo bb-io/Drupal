@@ -8,6 +8,29 @@ Blackbird is the new automation backbone for the language technology industry. B
 
 **Drupal** is a free, open-source content management system (CMS) with a large, supportive community. It’s used by millions of people and organizations around the globe to build and maintain their websites.
 
+## [**TMGMT Blackbird**](https://git.drupalcode.org/project/tmgmt_blackbird) module configuration
+
+The **TMGMT Blackbird** module provides integration with the Blackbird platform. It allows you to send and receive translation jobs to and from the Blackbird platform. You can find more information about the plugin on the [Drupal TMGMT Blackbird plugin page](https://git.drupalcode.org/project/tmgmt_blackbird).
+
+### Requirements
+
+The module depends on the [Translation Management (TMGMT) module](https://www.drupal.org/project/tmgmt).
+
+### Installation
+
+Install the module as you would normally install a contributed Drupal module. Visit [Installing contributed modules](https://www.drupal.org/docs/8/extending-drupal-8/installing-contributed-modules) for further information.
+
+### Configuration
+
+Go to `/admin/tmgmt/translators` and configure the `Blackbird` plugin. On the configuration form, you will need to provide the following information:
+
+- API Key: The API key used by Blackbird to process translations jobs. The API key needs to be copied to the Blackbird platform settings to complete the integration.
+- To prevent having to manually accept all translations, you can enable the `Auto accept finished translations` setting. This will automatically accept all translations when they are completed.
+
+### Translation jobs
+
+When creating a new translation job, you can select the `Blackbird` translator to process the job. Blackbird will then automatically process the job and post the translations back when they are done. The module will expose the following endpoints for `Blackbird` to interact with the translation jobs:
+
 ## Before setting up
 
 Before you can connect you need to make sure that:

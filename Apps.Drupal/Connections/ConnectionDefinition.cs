@@ -18,7 +18,7 @@ public class ConnectionDefinition : IConnectionDefinition
         {
             DisplayName = "API key",
             Description = "Api key for the authentication",
-            Sensitive = false
+            Sensitive = true
         }
     };
     

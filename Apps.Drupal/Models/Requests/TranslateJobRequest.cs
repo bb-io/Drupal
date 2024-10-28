@@ -4,7 +4,7 @@ using Blackbird.Applications.Sdk.Common.Files;
 
 namespace Apps.Drupal.Models.Requests;
 
-public class TranslateJobRequest : JobIdentifier
+public class TranslateJobRequest : JobOptionalIdentifier
 {
     [Display("HTML file")]
     public FileReference File { get; set; } = new();

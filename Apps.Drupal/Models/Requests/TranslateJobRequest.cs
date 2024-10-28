@@ -6,6 +6,6 @@ namespace Apps.Drupal.Models.Requests;
 
 public class TranslateJobRequest : JobIdentifier
 {
-    [Display("XLIFF file")]
+    [Display("HTML file")]
     public FileReference File { get; set; } = new();
 }

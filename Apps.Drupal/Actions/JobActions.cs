@@ -6,7 +6,6 @@ using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
-using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Newtonsoft.Json;
@@ -55,7 +54,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
     
-    [Action("Get XLIFF from job", Description = "Get XLIFF file from the job with specified job ID")]
+    [Action("Get job as HTML", Description = "Get HTML file from the job with specified job ID")]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
         var request = new ApiRequest($"/api/tmgmt/blackbird/job/{identifier}", Method.Get, Creds);
@@ -65,11 +64,11 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(xliff));
         return new()
         {
-            File = await fileManagementClient.UploadAsync(memoryStream, "application/xml", $"{identifier}.xliff")
+            File = await fileManagementClient.UploadAsync(memoryStream, "text/html", $"{identifier}.html")
         };
     }
     
-    [Action("Update job with XLIFF", Description = "Update job with XLIFF file")]
+    [Action("Update job from HTML", Description = "Update job from HTML file")]
     public async Task TranslateJobAsync([ActionParameter] TranslateJobRequest request)
     {
         var stream = await fileManagementClient.DownloadAsync(request.File);

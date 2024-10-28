@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <Product>Drupal</Product>
         <Description>Drupal is a free, open-source content management system (CMS) with a large, supportive community. It’s used by millions of people and organizations around the globe to build and maintain their websites.</Description>
-        <Version>1.0.2</Version>
+        <Version>1.0.3</Version>
         <PackageId>Apps.Drupal</PackageId>
         <AssemblyName>Apps.Drupal</AssemblyName>
         <RootNamespace>Apps.Drupal</RootNamespace>

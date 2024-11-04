@@ -53,8 +53,8 @@ Before you can connect you need to make sure that:
 ## Actions
 
 - **Search jobs** - Get jobs by specified search parameters.
-- **Get XLIFF from job** - Get XLIFF file from the job with specified job ID.
-- **Update job with XLIFF** - Update job with XLIFF file.
+- **Get job as HTML** - Get HTML file from the job with specified job ID.
+- **Update job from HTML** - Update job from HTML file.
 
 ## Events
 

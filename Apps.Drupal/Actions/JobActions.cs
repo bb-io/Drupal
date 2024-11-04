@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Apps.Drupal.Api;
 using Apps.Drupal.Invocables;
@@ -6,9 +7,9 @@ using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
-using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
 
@@ -55,29 +56,62 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
     
-    [Action("Get XLIFF from job", Description = "Get XLIFF file from the job with specified job ID")]
+    [Action("Get job as HTML", Description = "Get HTML file from the job with specified job ID")]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
         var request = new ApiRequest($"/api/tmgmt/blackbird/job/{identifier}", Method.Get, Creds);
         var response = await Client.ExecuteWithErrorHandling(request);
-        var xliff = response.Content!;
-        
-        var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(xliff));
+        var htmlContent = response.Content!;
+
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(htmlContent);
+
+        var atomNodes = htmlDoc.DocumentNode.SelectNodes("//div[@class='atom']");
+
+        if (atomNodes != null)
+        {
+            foreach (var node in atomNodes)
+            {
+                node.InnerHtml = WebUtility.HtmlDecode(node.InnerHtml);
+            }
+        }
+
+        var modifiedHtml = htmlDoc.DocumentNode.OuterHtml;
+
+        var memoryStream = new MemoryStream(Encoding.UTF8.GetBytes(modifiedHtml));
         return new()
         {
-            File = await fileManagementClient.UploadAsync(memoryStream, "application/xml", $"{identifier}.xliff")
+            File = await fileManagementClient.UploadAsync(memoryStream, "text/html", $"{identifier}.html")
         };
     }
     
-    [Action("Update job with XLIFF", Description = "Update job with XLIFF file")]
+    [Action("Update job from HTML", Description = "Update job from HTML file")]
     public async Task TranslateJobAsync([ActionParameter] TranslateJobRequest request)
     {
         var stream = await fileManagementClient.DownloadAsync(request.File);
-        var xliff = await new StreamReader(stream).ReadToEndAsync();
+        var htmlContent = await new StreamReader(stream).ReadToEndAsync();
+        
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(htmlContent);
+        
+        var jobIdNode = htmlDoc.DocumentNode.SelectSingleNode("//meta[@name='JobID']");
+        var jobIdContent = jobIdNode.GetAttributeValue("content", null) ?? throw new Exception("Job ID not found in the HTML file");
+        
+        var atomNodes = htmlDoc.DocumentNode.SelectNodes("//div[@class='atom']");
+        if (atomNodes != null)
+        {
+            foreach (var node in atomNodes)
+            {
+                node.InnerHtml = WebUtility.HtmlEncode(node.InnerHtml);
+            }
+        }
 
-        var apiRequest = new ApiRequest($"/api/tmgmt/blackbird/job/{request.JobId}", Method.Post, Creds)
-            .AddHeader("Content-Type", "application/xml")
-            .AddBody(xliff);
+        var modifiedHtml = htmlDoc.DocumentNode.OuterHtml;
+
+        var jobId = request.JobId ?? jobIdContent;
+        var apiRequest = new ApiRequest($"/api/tmgmt/blackbird/job/{jobId}", Method.Post, Creds)
+            .AddHeader("Content-Type", "text/html")
+            .AddParameter("text/html", modifiedHtml, ParameterType.RequestBody);
         
         await Client.ExecuteWithErrorHandling(apiRequest);
     }

@@ -110,8 +110,8 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
 
         var jobId = request.JobId ?? jobIdContent;
         var apiRequest = new ApiRequest($"/api/tmgmt/blackbird/job/{jobId}", Method.Post, Creds)
-            .AddHeader("Content-Type", "application/xml")
-            .AddBody(modifiedHtml);
+            .AddHeader("Content-Type", "text/html")
+            .AddParameter("text/html", modifiedHtml, ParameterType.RequestBody);
         
         await Client.ExecuteWithErrorHandling(apiRequest);
     }

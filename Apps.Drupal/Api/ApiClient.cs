@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using System.Web;
 using Apps.Drupal.Constants;
 using Blackbird.Applications.Sdk.Common.Authentication;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using Blackbird.Applications.Sdk.Utils.RestSharp;
 using RestSharp;
@@ -32,7 +33,7 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
             errorMessage += $", Error: {response.StatusDescription}";
         }
 
-        return new Exception(errorMessage);
+        throw new PluginApplicationException(errorMessage);
     }
     
      private string ExtractErrorMessage(string content, string? contentType)

@@ -15,7 +15,7 @@ using RestSharp;
 
 namespace Apps.Drupal.Actions;
 
-[ActionList]
+[ActionList("Job")]
 public class JobActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient) : AppInvocable(invocationContext)
 {
     [Action("Search jobs", Description = "Get jobs by specified search parameters")]

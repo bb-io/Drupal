@@ -6,21 +6,21 @@
         <Nullable>enable</Nullable>
         <Product>Drupal</Product>
         <Description>Drupal is a free, open-source content management system (CMS) with a large, supportive community. It’s used by millions of people and organizations around the globe to build and maintain their websites.</Description>
-        <Version>1.0.3</Version>
+        <Version>1.0.4</Version>
         <PackageId>Apps.Drupal</PackageId>
         <AssemblyName>Apps.Drupal</AssemblyName>
         <RootNamespace>Apps.Drupal</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Blackbird.Applications.Sdk.Common" Version="2.10.0" />
+        <PackageReference Include="Blackbird.Applications.SDK.Blueprints" Version="1.0.0-rc.10308" />
         <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.0.2-alpha2" />
         <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.0.25" />
         <PackageReference Include="HtmlAgilityPack" Version="1.11.70" />
     </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png"/>
+        <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png" />
     </ItemGroup>
 
 </Project>

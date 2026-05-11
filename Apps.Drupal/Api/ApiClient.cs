@@ -10,7 +10,9 @@ using RestSharp;
 namespace Apps.Drupal.Api;
 
 public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credentials) : BlackBirdRestClient(new()
-    { BaseUrl = new Uri(credentials.Get(CredsNames.BaseUrl).Value) })
+{
+    BaseUrl = new Uri(credentials.Get(CredsNames.BaseUrl).Value)
+})
 {
     protected override Exception ConfigureErrorException(RestResponse response)
     {
@@ -18,7 +20,7 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
 
         if (!string.IsNullOrEmpty(response.Content))
         {
-            string extractedError = ExtractErrorMessage(response.Content, response.ContentType);
+            string? extractedError = ExtractErrorMessage(response.Content, response.ContentType);
             if (!string.IsNullOrEmpty(extractedError))
             {
                 errorMessage += $", Error: {extractedError}";
@@ -36,7 +38,7 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
         throw new PluginApplicationException(errorMessage);
     }
     
-     private string ExtractErrorMessage(string content, string? contentType)
+    private string? ExtractErrorMessage(string content, string? contentType)
     {
         if (contentType != null)
         {
@@ -49,7 +51,7 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
         return content;
     }
 
-    private string ExtractErrorMessageFromHtml(string htmlContent)
+    private string? ExtractErrorMessageFromHtml(string htmlContent)
     {
         var titleMatch = Regex.Match(htmlContent, @"<title>\s*(.+?)\s*</title>", RegexOptions.IgnoreCase);
         if (titleMatch.Success)

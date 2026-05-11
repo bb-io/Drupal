@@ -107,7 +107,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         htmlDoc.LoadHtml(content);
         
         var jobIdNode = htmlDoc.DocumentNode.SelectSingleNode("//meta[@name='JobID']");
-        var jobIdContent = jobIdNode.GetAttributeValue("content", null) ?? throw new Exception("Job ID not found in the HTML file");
+        var jobIdContent = jobIdNode.GetAttributeValue("content", null) ?? throw new PluginApplicationException("Job ID not found in the HTML file");
         
         var atomNodes = htmlDoc.DocumentNode.SelectNodes("//div[@class='atom']");
         if (atomNodes != null)

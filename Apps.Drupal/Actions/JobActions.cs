@@ -7,8 +7,13 @@ using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Filters.Transformations;
+using Blackbird.Filters.Xliff.Xliff1;
+using Blackbird.Filters.Xliff.Xliff2;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
@@ -89,10 +94,17 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
     public async Task TranslateJobAsync([ActionParameter] TranslateJobRequest request)
     {
         var stream = await fileManagementClient.DownloadAsync(request.File);
-        var htmlContent = await new StreamReader(stream).ReadToEndAsync();
+        var content = Encoding.UTF8.GetString(await stream.GetByteData());
+
+        Transformation? transformation = null;
+        if (Xliff2Serializer.IsXliff2(content) || Xliff1Serializer.IsXliff1(content))
+        {
+            transformation = Transformation.Parse(content, request.File.Name);
+            content = transformation.Target().Serialize() ?? throw new PluginMisconfigurationException("XLIFF did not contain any files");
+        }
         
         var htmlDoc = new HtmlDocument();
-        htmlDoc.LoadHtml(htmlContent);
+        htmlDoc.LoadHtml(content);
         
         var jobIdNode = htmlDoc.DocumentNode.SelectSingleNode("//meta[@name='JobID']");
         var jobIdContent = jobIdNode.GetAttributeValue("content", null) ?? throw new Exception("Job ID not found in the HTML file");

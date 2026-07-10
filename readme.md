@@ -52,13 +52,23 @@ Before you can connect you need to make sure that:
 
 ## Actions
 
-- **Search jobs** - Get jobs by specified search parameters.
-- **Get job as HTML** - Get HTML file from the job with specified job ID.
-- **Update job from HTML** - Update job from HTML file.
+### Job
+
+- **Search jobs** Search jobs that match the selected filters.
+    Advanced settings:
+  - **State**: Specify the job state. By default, only active jobs are included.
+  - **Target language**: Specify the job target language.
+  - **Created after**: Specify the earliest job creation date to include.
+- **Get job as HTML** Download source content for a job by job ID.
+- **Update job from HTML** Upload translated content to a job.
+    Advanced settings:
+  - **Job ID**: Specify the job to update. If omitted, the job ID is read from the uploaded file.
 
 ## Events
 
-- **On translation jobs requested** - Polling based event. Returns translation jobs that were requested after the last polling time. 
+- **On translation jobs requested** Triggers when translation jobs are requested and outputs matching jobs.
+    Advanced settings:
+  - **Target languages**: Specify the job target languages to include.
 
 ## Error handling
 

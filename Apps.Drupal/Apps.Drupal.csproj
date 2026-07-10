@@ -21,6 +21,7 @@
 
     <ItemGroup>
         <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png" />
+        <EmbeddedResource CopyToOutputDirectory="Always" Include="..\readme.md" Link="readme.md" />
     </ItemGroup>
 
 </Project>

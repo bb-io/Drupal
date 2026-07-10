@@ -14,7 +14,7 @@ namespace Apps.Drupal.Polling;
 public class PollingList(InvocationContext invocationContext) : AppInvocable(invocationContext)
 {
     [PollingEvent("On translation jobs requested",
-        Description = "Returns translation jobs that were requested after the last polling time")]
+        Description = "Triggers when translation jobs are requested and outputs matching jobs")]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] TranslationJobsPollingParameters parameters)

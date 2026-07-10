@@ -23,7 +23,7 @@ namespace Apps.Drupal.Actions;
 [ActionList("Job")]
 public class JobActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient) : AppInvocable(invocationContext)
 {
-    [Action("Search jobs", Description = "Get jobs by specified search parameters")]
+    [Action("Search jobs", Description = "Search jobs that match the selected filters")]
     public async Task<JobSearchResponse> SearchJobsAsync([ActionParameter] SearchJobRequest filterRequest)
     {
         var request = new ApiRequest("/api/tmgmt/blackbird/jobs", Method.Get, Creds);
@@ -61,7 +61,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
     
-    [Action("Get job as HTML", Description = "Get HTML file from the job with specified job ID")]
+    [Action("Get job as HTML", Description = "Download source content for a job by job ID")]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
         var request = new ApiRequest($"/api/tmgmt/blackbird/job/{identifier}", Method.Get, Creds);
@@ -90,7 +90,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
     
-    [Action("Update job from HTML", Description = "Update job from HTML file")]
+    [Action("Update job from HTML", Description = "Upload translated content to a job")]
     public async Task TranslateJobAsync([ActionParameter] TranslateJobRequest request)
     {
         var stream = await fileManagementClient.DownloadAsync(request.File);

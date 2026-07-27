@@ -100,6 +100,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
 
         htmlNode.SetAttributeValue("lang", job.Source);
         htmlNode.SetAttributeValue("xml:lang", job.Source);
+        headNode.SelectSingleNode("title")?.Remove();
 
         var baseUrl = Creds.Get(CredsNames.BaseUrl).Value.TrimEnd('/');
         foreach (var (name, value) in new[]

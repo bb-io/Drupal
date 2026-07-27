@@ -92,6 +92,7 @@ public class JobActionTests : TestBase
         var body = document.DocumentNode.SelectSingleNode("//body");
         Assert.IsNotNull(html);
         Assert.IsNotNull(body);
+        Assert.IsNull(document.DocumentNode.SelectSingleNode("//title"));
         Assert.AreEqual(Manifest.ReadJob.Source, html.GetAttributeValue("lang", string.Empty));
         Assert.AreEqual(Manifest.ReadJob.Source, html.GetAttributeValue("xml:lang", string.Empty));
         Assert.AreEqual("Drupal", body.GetAttributeValue("its-rev-tool", string.Empty));

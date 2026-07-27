@@ -1,20 +1,21 @@
-﻿using Apps.Drupal.Utils;
+using Apps.Drupal.Utils;
 using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 using Newtonsoft.Json;
 
 namespace Apps.Drupal.Models.Responses;
 
-public class JobResponse
+public class JobResponse : IDownloadContentInput
 {
-    [Display("Job ID")]
-    public string Id { get; set; } = string.Empty;
-    
+    [Display("Job ID"), JsonProperty("id")]
+    public string ContentId { get; set; } = string.Empty;
+
     [Display("Job name")]
     public string Name { get; set; } = string.Empty;
 
     [Display("Source language")]
     public string Source { get; set; } = string.Empty;
-    
+
     [Display("Target language")]
     public string Target { get; set; } = string.Empty;
 

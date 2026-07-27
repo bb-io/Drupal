@@ -1,9 +1,13 @@
-﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 
 namespace Apps.Drupal.Models.Responses;
 
-public class JobSearchResponse : BaseSearchResponse<JobResponse>
+public class JobSearchResponse : IMultiDownloadableContentOutput<JobResponse>
 {
     [Display("Jobs")]
-    public override List<JobResponse> Items { get; set; } = new();
+    public List<JobResponse> Items { get; set; } = [];
+
+    [Display("Total count")]
+    public int TotalCount { get; set; }
 }

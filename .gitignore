@@ -363,5 +363,9 @@ MigrationBackup/
 .idea/
 *.sln.iml
 
+# Connector test secrets and generated artifacts
+Tests.Drupal/appsettings.json
+Tests.Drupal/TestFiles/Output/
+
 # Fody - auto-generated XML schema
 FodyWeavers.xsd

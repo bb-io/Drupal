@@ -1,0 +1,18 @@
+{
+  "Version": 10,
+  "CapturedAtUtc": "2026-07-16T15:43:42.333993Z",
+  "ReadJob": {
+    "Id": "14",
+    "Name": "Blackbird connector capture read Drupal 10",
+    "Source": "en",
+    "Target": "fr",
+    "Created": 1784216620
+  },
+  "UploadJob": {
+    "Id": "15",
+    "Name": "Blackbird connector capture upload Drupal 10",
+    "Source": "en",
+    "Target": "fr",
+    "Created": 1784216620
+  }
+}

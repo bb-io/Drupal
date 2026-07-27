@@ -11,13 +11,13 @@ public class ConnectionDefinition : IConnectionDefinition
         new ConnectionProperty(CredsNames.BaseUrl)
         {
             DisplayName = "Base URL",
-            Description = "Base URL for the API",
+            Description = "URL of Drupal site, for example https://drupal.example.com",
             Sensitive = false
         },
         new ConnectionProperty(CredsNames.ApiKey)
         {
             DisplayName = "API key",
-            Description = "Api key for the authentication",
+            Description = "API key from Blackbird translator configuration",
             Sensitive = true
         }
     };
@@ -26,7 +26,7 @@ public class ConnectionDefinition : IConnectionDefinition
     {
         new()
         {
-            Name = "Developer API key",
+            Name = "API key",
             AuthenticationType = ConnectionAuthenticationType.Undefined,
             ConnectionProperties = ConnectionProperties
         }

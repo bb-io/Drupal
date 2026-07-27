@@ -1,69 +1,65 @@
-﻿using Apps.Drupal.Api;
 using Apps.Drupal.Invocables;
+using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling.Models;
 using Apps.Drupal.Polling.Models.Requests;
+using Apps.Drupal.Services;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
-using Newtonsoft.Json;
-using RestSharp;
+using Blackbird.Applications.SDK.Blueprints;
 
 namespace Apps.Drupal.Polling;
 
 [PollingEventList]
 public class PollingList(InvocationContext invocationContext) : AppInvocable(invocationContext)
 {
-    [PollingEvent("On translation jobs requested",
-        Description = "Triggers when translation jobs are requested and outputs matching jobs")]
+    [PollingEvent("On translation jobs requested", Description = "Outputs newly requested translation jobs")]
+    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] TranslationJobsPollingParameters parameters)
     {
-        if(request.Memory == null)
+        var pollingTime = DateTime.UtcNow;
+        if (request.Memory is null)
         {
             return new PollingEventResponse<DateMemory, JobSearchResponse>
             {
                 FlyBird = false,
-                Memory = new DateMemory { LastPollingTime = DateTime.Now },
+                Memory = new DateMemory { LastPollingTime = pollingTime },
                 Result = null
             };
         }
-        
-        var jobs = await SearchJobsAsync(request.Memory.LastPollingTime, parameters.TargetLanguages);
+
+        var jobs = await new JobService(Client, Creds).SearchJobsAsync(new SearchJobRequest
+        {
+            CreatedAfter = request.Memory.LastPollingTime
+        });
+
+        if (parameters.TargetLanguages is not null)
+        {
+            var targetLanguages = parameters.TargetLanguages.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            jobs = jobs.Where(job => targetLanguages.Contains(job.Target)).ToList();
+        }
+
+        if (jobs.Count == 0)
+        {
+            return new PollingEventResponse<DateMemory, JobSearchResponse>
+            {
+                FlyBird = false,
+                Memory = new DateMemory { LastPollingTime = pollingTime },
+                Result = null
+            };
+        }
 
         return new PollingEventResponse<DateMemory, JobSearchResponse>
         {
-            FlyBird = jobs.Total > 0,
-            Memory = new DateMemory { LastPollingTime = DateTime.Now },
-            Result = jobs
-        };
-    }
-    
-    private async Task<JobSearchResponse> SearchJobsAsync(DateTime lastPollingTime, IEnumerable<string>? targetLanguages)
-    {
-        var unixTimestamp = ((DateTimeOffset)lastPollingTime).ToUnixTimeSeconds();
-        
-        var request = new ApiRequest("/api/tmgmt/blackbird/jobs", Method.Get, Creds)
-            .AddQueryParameter("created", unixTimestamp.ToString());
-        
-        var jobsResponse = await Client.ExecuteWithErrorHandling(request);
-        
-        var jobs = new List<JobResponse>();
-        if(jobsResponse.Content!.StartsWith("{") && jobsResponse.Content!.EndsWith("}")) // If there is no jobs, the response will be a collection of objects, if response contains jobs, it will be a dictionary
-        {
-            var deserializedResponse = JsonConvert.DeserializeObject<Dictionary<string, JobResponse>>(jobsResponse.Content)!;
-            jobs = deserializedResponse.Values.ToList();
-        }
-
-        if (targetLanguages != null)
-        {
-            jobs = jobs.Where(job => targetLanguages.Contains(job.Target)).ToList();
-        }
-        
-        return new JobSearchResponse
-        {
-            Items = jobs,
-            Total = jobs.Count
+            FlyBird = true,
+            Memory = new DateMemory { LastPollingTime = pollingTime },
+            Result = new JobSearchResponse
+            {
+                Items = jobs,
+                TotalCount = jobs.Count
+            }
         };
     }
 }

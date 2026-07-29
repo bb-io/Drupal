@@ -1,15 +1,17 @@
-﻿using Blackbird.Applications.Sdk.Common.Dictionaries;
+using Blackbird.Applications.Sdk.Common.Dictionaries;
+using Blackbird.Applications.Sdk.Common.Dynamic;
 
 namespace Apps.Drupal.DataSources.Static;
 
-public class JobStateDataHandler : IStaticDataSourceHandler
+public class JobStateDataHandler : IStaticDataSourceItemHandler
 {
-    public Dictionary<string, string> GetData()
+    public IEnumerable<DataSourceItem> GetData()
     {
-        return new()
+        return new[]
         {
-            { "active", "Active" },
-            { "completed", "Completed" }
+            new DataSourceItem("active", "Active"),
+            new DataSourceItem("completed", "Completed"),
+            new DataSourceItem("aborted", "Aborted")
         };
     }
 }

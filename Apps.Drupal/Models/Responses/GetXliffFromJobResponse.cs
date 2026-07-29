@@ -1,8 +1,11 @@
-﻿using Blackbird.Applications.Sdk.Common.Files;
+using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common.Files;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 
 namespace Apps.Drupal.Models.Responses;
 
-public class GetXliffFromJobResponse
+public class GetXliffFromJobResponse : IDownloadContentOutput
 {
-    public FileReference File { get; set; } = default!;
+    [Display("Content")]
+    public FileReference Content { get; set; } = default!;
 }

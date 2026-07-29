@@ -1,0 +1,26 @@
+# Repository Guidelines
+
+## What This Repository Builds
+- Blackbird is an IPaaS workflow platform conceptually similar to Zapier or n8n.
+- `Apps.{AppName}` is a Blackbird app: a lightweight integration plugin that exposes a third-party system inside the Blackbird workflow editor.
+- A typical app contains connection setup, user-facing actions, optional polling/webhook events, UI dropdown data sources, API clients, and request/response models.
+- These projects are usually small integration plugins, so prefer simple, focused implementations over heavy architecture.
+
+## Project Structure
+- `Apps.{AppName}\Actions`: workflow actions available to users. Keep action classes thin: validate input, call focused logic, map the response.
+- `Apps.{AppName}\Connections\ConnectionDefinition.cs`: declares connection types and the connection fields shown in Blackbird UI.
+- `Apps.{AppName}\Connections\ConnectionValidator.cs`: validates credentials. Treat only HTTP `401` as an invalid connection; do not mark the connection invalid for `400` or `5xx`.
+- `Apps.{AppName}\DataSourceHandlers`: classes used by `[DataSource]` or `[StaticDataSource]` to populate friendly dropdowns in the UI.
+- `Apps.{AppName}\Invocables\{AppName}Invocable.cs`: shared base for actions, events, and handlers. `InvocationContext` should be accepted only here and reused through inheritance.
+- `Apps.{AppName}\Polling`: polling triggers/events. Optional; some apps do not have polling.
+- `Apps.{AppName}\Webhook` or `Apps.{AppName}\Events`: webhook-based events. Often includes `Handlers\` and `BaseWebhookHandler.cs` for subscribe/unsubscribe logic.
+- `Apps.{AppName}\Api`, `Services`, `Models`, `Dtos`: keep external API calls, reusable logic, and transport models separated and easy to scan. Use `RestSharp` for HTTP communication in app integrations.
+- `README.md`: user-facing setup and usage documentation for the app.
+- `Tests.{AppName}\`: usually contains integration tests against the real API, so assume they may change remote state. Do not run these tests unless the user explicitly allows it. Read-only `GET` tests may be run only after user approval. `POST`/`PUT`/`PATCH`/`DELETE` tests are not allowed without approval. You may create and run your own local tests if they do not call the external API.
+
+## Code Quality
+- Write production-quality C#/.NET that is explicit, readable, and easy to maintain.
+- Follow SRP for both classes and methods: one responsibility, one reason to change.
+- Prefer small cohesive methods, precise naming, and minimal side effects.
+- Avoid god classes, long methods, hidden coupling, and speculative abstractions.
+- Preserve existing behavior and repository patterns unless the task explicitly requires a change.

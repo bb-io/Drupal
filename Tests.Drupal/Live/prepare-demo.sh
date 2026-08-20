@@ -7,7 +7,9 @@ demo_dir="${DEMO_DRUPAL_DIR:-$repo_dir/../demo-drupal}"
 
 cd "$demo_dir"
 
-for version in 8 9 10 11; do
+versions="${DRUPAL_VERSIONS:-8 9 10 11}"
+
+for version in $versions; do
   service="drupal${version}"
   if ! docker compose ps --status running --services | grep -qx "$service"; then
     echo "Required demo service is not running: $service" >&2
@@ -15,7 +17,7 @@ for version in 8 9 10 11; do
   fi
 done
 
-for version in 8 9 10 11; do
+for version in $versions; do
   service="drupal${version}"
   docker compose exec -T -e TEST_VERSION="$version" "$service" php <<'PHP'
 <?php
@@ -53,6 +55,7 @@ try {
   $labels = [
     'Blackbird connector capture read Drupal ' . $version,
     'Blackbird connector capture upload Drupal ' . $version,
+    'Blackbird connector status transition Drupal ' . $version,
   ];
   $job_storage = Drupal::entityTypeManager()->getStorage('tmgmt_job');
   foreach ($labels as $label) {

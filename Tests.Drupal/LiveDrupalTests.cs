@@ -113,6 +113,98 @@ public class LiveDrupalTests : TestBase
     }
 
     [TestMethod]
+    public async Task ReportErrorAndStatusChanged_Drupal11Live_RejectsJobAndTriggers()
+    {
+        // Arrange
+        var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
+        var context = CreateLiveInvocationContext(liveContext);
+        var actions = new JobActions(context, Files);
+        const string jobLabel = "Blackbird connector status transition Drupal 11";
+        var job = (await actions.SearchJobsAsync(new SearchJobRequest { State = "active" }))
+            .Items.SingleOrDefault(item => item.Name == jobLabel);
+        if (job is null)
+        {
+            Assert.Inconclusive("Active Drupal 11 status-transition job was not found. Run prepare-demo.sh first.");
+        }
+
+        var polling = new PollingList(context);
+        var baseline = await polling.OnJobStatusChanged(
+            new PollingEventRequest<JobStatusMemory>(),
+            new JobStatusChangedPollingParameters
+            {
+                Statuses = ["rejected"],
+                JobId = job.ContentId,
+                JobLabelContains = "STATUS TRANSITION"
+            });
+
+        // Act
+        var actionResult = await actions.ReportErrorAsync(new ReportJobErrorRequest
+        {
+            JobId = job.ContentId,
+            ErrorMessage = "Blackbird connector live-test failure"
+        });
+        var eventResult = await polling.OnJobStatusChanged(
+            new PollingEventRequest<JobStatusMemory> { Memory = baseline.Memory },
+            new JobStatusChangedPollingParameters
+            {
+                Statuses = ["rejected"],
+                JobId = job.ContentId,
+                JobLabelContains = "status transition"
+            });
+
+        // Assert
+        Assert.IsFalse(baseline.FlyBird);
+        Assert.IsNull(baseline.Result);
+        Assert.AreEqual(job.ContentId, actionResult.JobId);
+        Assert.AreEqual("rejected", actionResult.Status);
+        Assert.IsTrue(eventResult.FlyBird);
+        Assert.IsNotNull(eventResult.Result);
+        Assert.HasCount(1, eventResult.Result.Items);
+        Assert.AreEqual("active", eventResult.Result.Items[0].PreviousStatus);
+        Assert.AreEqual("rejected", eventResult.Result.Items[0].Status);
+        Assert.AreEqual(job.ContentId, eventResult.Result.Items[0].ContentId);
+    }
+
+    [TestMethod]
+    public async Task OnTranslationJobRequested_Drupal11BulkLanguageFanOut_ReturnsBothTargets()
+    {
+        // Arrange
+        var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
+        var context = CreateLiveInvocationContext(liveContext);
+        var actions = new JobActions(context, Files);
+        var bulkJobs = (await actions.SearchJobsAsync(new SearchJobRequest { State = "active" })).Items
+            .Where(job => job.Name.StartsWith("Bulk connector verification", StringComparison.Ordinal))
+            .Where(job => job.Target is "de" or "fr")
+            .ToList();
+        if (!new[] { "de", "fr" }.All(target => bulkJobs.Any(job => job.Target == target)))
+        {
+            Assert.Inconclusive("Active Drupal 11 French/German bulk jobs were not found. Run bulk UI setup first.");
+        }
+
+        // Act
+        var result = await new PollingList(context).OnTranslationJobRequested(
+            new PollingEventRequest<DateMemory>
+            {
+                Memory = new DateMemory
+                {
+                    LastPollingTime = bulkJobs.Min(job => job.CreationDate).AddSeconds(-1)
+                }
+            },
+            new TranslationJobsPollingParameters { TargetLanguages = ["de", "fr"] });
+
+        // Assert
+        Assert.IsTrue(result.FlyBird);
+        Assert.IsNotNull(result.Result);
+        var returnedBulkJobs = result.Result.Items
+            .Where(job => job.Name.StartsWith("Bulk connector verification", StringComparison.Ordinal))
+            .ToList();
+        CollectionAssert.AreEquivalent(
+            new[] { "de", "fr" },
+            returnedBulkJobs.Select(job => job.Target).Distinct().ToArray());
+        Assert.IsTrue(returnedBulkJobs.All(job => bulkJobs.Any(expected => expected.ContentId == job.ContentId)));
+    }
+
+    [TestMethod]
     [LiveContextDataSource]
     public async Task GetXliffFromJobAsync_LiveReadJob_ReturnsOriginalAndDecoratedContent(LiveContext liveContext)
     {

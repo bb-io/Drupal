@@ -10,8 +10,9 @@ public class JobStateDataHandler : IStaticDataSourceItemHandler
         return new[]
         {
             new DataSourceItem("active", "Active"),
-            new DataSourceItem("completed", "Completed"),
-            new DataSourceItem("aborted", "Aborted")
+            new DataSourceItem("rejected", "Rejected"),
+            new DataSourceItem("aborted", "Aborted"),
+            new DataSourceItem("completed", "Completed")
         };
     }
 }

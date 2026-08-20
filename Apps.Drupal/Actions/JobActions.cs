@@ -39,6 +39,26 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
 
+    [Action("Report an error", Description = "Reject an active translation job and record an error message in Drupal")]
+    public async Task<ReportJobErrorResponse> ReportErrorAsync([ActionParameter] ReportJobErrorRequest input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(input.ErrorMessage))
+        {
+            throw new PluginMisconfigurationException("Error message is required.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/error", Method.Post, Creds)
+            .AddJsonBody(new { message = input.ErrorMessage.Trim() });
+
+        return await Client.ExecuteWithErrorHandling<ReportJobErrorResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty error-report response.");
+    }
+
     [Action("Download job content", Description = "Download assembled content from a translation job")]
     [BlueprintActionDefinition(BlueprintAction.DownloadContent)]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)

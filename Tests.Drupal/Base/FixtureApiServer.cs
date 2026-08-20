@@ -24,6 +24,18 @@ public sealed class FixtureApiServer : IDisposable
         server = WireMockServer.Start();
         MapGet("/api/tmgmt/blackbird/languages", languages, "application/json");
         MapGet("/api/tmgmt/blackbird/jobs", jobs, "application/json");
+        foreach (var state in new[] { "active", "rejected", "aborted", "completed" })
+        {
+            server.Given(Request.Create()
+                    .WithPath("/api/tmgmt/blackbird/jobs")
+                    .WithHeader("x-api-key", ValidApiKey)
+                    .WithParam("state", state)
+                    .UsingGet())
+                .RespondWith(Response.Create()
+                    .WithStatusCode(200)
+                    .WithHeader("Content-Type", "application/json")
+                    .WithBody(state == "active" ? jobs : "[]"));
+        }
         MapJob(manifest.ReadJob.Id, readJobHtml);
         MapJob(manifest.UploadJob.Id, uploadJobHtml);
         MapInvalidKey("/api/tmgmt/blackbird/languages");
@@ -59,13 +71,23 @@ public sealed class FixtureApiServer : IDisposable
     private void MapJob(string jobId, string html)
     {
         var path = $"/api/tmgmt/blackbird/job/{jobId}";
+        var errorPath = $"{path}/error";
         MapGet(path, html, "text/html; charset=UTF-8");
         server.Given(Request.Create()
                 .WithPath(path)
                 .WithHeader("x-api-key", ValidApiKey)
                 .UsingPost())
             .RespondWith(Response.Create().WithStatusCode(200));
+        server.Given(Request.Create()
+                .WithPath(errorPath)
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"rejected\"}}"));
         MapInvalidKey(path);
+        MapInvalidKey(errorPath);
     }
 
     private void MapInvalidKey(string path)

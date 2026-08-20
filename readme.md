@@ -37,6 +37,8 @@ A TMGMT job is the content unit used by blueprint actions. Its Job ID becomes th
 4. Translate the downloaded content.
 5. Pass the translated content and job target language to **Upload job content**.
 
+For multi-language checkout, select all target languages in Drupal and leave **Submit all translation jobs to Blackbird** checked. One submission activates one TMGMT job per target language; polling event returns every matching job for workflow processing.
+
 ## Connecting
 
 1. Open **Apps**, search for **Drupal**, and select **Add connection**.
@@ -53,7 +55,7 @@ A TMGMT job is the content unit used by blueprint actions. Its Job ID becomes th
 
 - **Search jobs**: Search translation jobs using optional filters.
   - **Advanced settings**:
-    - **State**: Filter jobs by active, completed, or aborted state. Defaults to active jobs.
+    - **State**: Filter jobs by active, rejected, completed, or aborted state. Defaults to active jobs.
     - **Target language**: Filter jobs by target language.
     - **Created after**: Filter jobs created on or after the selected date and time.
 - **Download job content**: Download assembled content from a translation job.
@@ -62,6 +64,7 @@ A TMGMT job is the content unit used by blueprint actions. Its Job ID becomes th
 - **Upload job content**: Upload translated content to a translation job and output content with updated target metadata. **Content** and **Target language** are required. Target language must match the job configuration. Supports content produced from HTML, XLIFF 1, or XLIFF 2 workflows.
   - **Advanced settings**:
     - **Job ID**: Override the Job ID embedded in the content. Leave empty when the content still contains its original Job ID.
+- **Reject job**: Reject an active translation job and record supplied reason in Drupal. Repeated rejection requests for same rejected job are idempotent.
 
 ## Events
 
@@ -70,6 +73,11 @@ A TMGMT job is the content unit used by blueprint actions. Its Job ID becomes th
 - **On translation jobs requested**: Outputs newly requested translation jobs.
   - **Advanced settings**:
     - **Target languages**: Trigger only for jobs with selected target languages.
+- **On job status changed**: Outputs known jobs whose status changed since previous poll.
+  - **Statuses**: Select one or more destination statuses: active, rejected, completed, or aborted.
+  - **Advanced settings**:
+    - **Job ID**: Trigger only for selected job.
+    - **Job label contains**: Trigger only when job label contains supplied text.
 
 ## Error handling
 

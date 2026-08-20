@@ -19,6 +19,9 @@ public class JobResponse : IDownloadContentInput
     [Display("Target language")]
     public string Target { get; set; } = string.Empty;
 
+    [Display("Status")]
+    public string Status { get; set; } = string.Empty;
+
     [Display("Creation date"), JsonConverter(typeof(UnixTimestampConverter)), JsonProperty("created")]
     public DateTime CreationDate { get; set; }
 }

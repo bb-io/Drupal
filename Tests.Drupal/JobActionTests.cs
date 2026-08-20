@@ -8,6 +8,7 @@ using Blackbird.Filters.Bilingual.Xliff1;
 using Blackbird.Filters.Enums;
 using Blackbird.Filters.Transformations;
 using HtmlAgilityPack;
+using Newtonsoft.Json.Linq;
 using Tests.Drupal.Base;
 
 namespace Tests.Drupal;
@@ -40,6 +41,7 @@ public class JobActionTests : TestBase
         Assert.AreEqual(Manifest.ReadJob.Name, readJob.Name);
         Assert.AreEqual(Manifest.ReadJob.Source, readJob.Source);
         Assert.AreEqual(Manifest.ReadJob.Target, readJob.Target);
+        Assert.AreEqual("active", readJob.Status);
         Assert.AreEqual(
             DateTimeOffset.FromUnixTimeSeconds(Manifest.ReadJob.Created).UtcDateTime,
             readJob.CreationDate);
@@ -48,6 +50,51 @@ public class JobActionTests : TestBase
         Assert.AreEqual("active", apiRequest.Query!["state"].Single());
         Assert.AreEqual(Manifest.ReadJob.Target, apiRequest.Query["target"].Single());
         Assert.AreEqual((Manifest.ReadJob.Created - 1).ToString(), apiRequest.Query["created"].Single());
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task RejectJobAsync_ValidInput_PostsReasonAndReturnsRejectedStatus(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var result = await actions.RejectJobAsync(new RejectJobRequest
+        {
+            JobId = Manifest.ReadJob.Id,
+            RejectionReason = " Translation workflow failed. "
+        });
+
+        // Assert
+        Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
+        Assert.AreEqual("rejected", result.Status);
+        var request = FixtureServer.LastRequest(
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/error");
+        var body = JObject.Parse(request.Body!);
+        Assert.AreEqual("Translation workflow failed.", body["message"]?.Value<string>());
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task RejectJobAsync_EmptyReason_ThrowsWithoutCallingDrupal(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var exception = await Assert.ThrowsExactlyAsync<PluginMisconfigurationException>(() =>
+            actions.RejectJobAsync(new RejectJobRequest
+            {
+                JobId = Manifest.ReadJob.Id,
+                RejectionReason = "  "
+            }));
+
+        // Assert
+        StringAssert.Contains(exception.Message, "Rejection reason is required");
+        Assert.IsEmpty(FixtureServer.Requests);
     }
 
     [TestMethod]

@@ -71,7 +71,7 @@ public class ContractTests
 
         // Assert
         CollectionAssert.AreEquivalent(
-            new[] { "active", "completed", "aborted" },
+            new[] { "active", "rejected", "completed", "aborted" },
             states.Select(state => state.Value).ToArray());
     }
 

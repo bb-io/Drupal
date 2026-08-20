@@ -28,6 +28,12 @@ public class JobService(ApiClient client, IEnumerable<AuthenticationCredentialsP
             request.AddQueryParameter("target", filter.TargetLanguage);
         }
 
-        return await client.ExecuteWithErrorHandling<List<JobResponse>>(request) ?? [];
+        var jobs = await client.ExecuteWithErrorHandling<List<JobResponse>>(request) ?? [];
+        foreach (var job in jobs)
+        {
+            job.Status = filter.State ?? "active";
+        }
+
+        return jobs;
     }
 }

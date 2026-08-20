@@ -64,7 +64,7 @@ For multi-language checkout, select all target languages in Drupal and leave **S
 - **Upload job content**: Upload translated content to a translation job and output content with updated target metadata. **Content** and **Target language** are required. Target language must match the job configuration. Supports content produced from HTML, XLIFF 1, or XLIFF 2 workflows.
   - **Advanced settings**:
     - **Job ID**: Override the Job ID embedded in the content. Leave empty when the content still contains its original Job ID.
-- **Report an error**: Reject an active translation job and record supplied error message in Drupal. Repeated reports for same rejected job are idempotent.
+- **Reject job**: Reject an active translation job and record supplied reason in Drupal. Repeated rejection requests for same rejected job are idempotent.
 
 ## Events
 

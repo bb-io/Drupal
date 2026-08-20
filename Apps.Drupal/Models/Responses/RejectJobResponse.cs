@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace Apps.Drupal.Models.Responses;
 
-public class ReportJobErrorResponse
+public class RejectJobResponse
 {
     [Display("Job ID"), JsonProperty("id")]
     public string JobId { get; set; } = string.Empty;

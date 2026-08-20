@@ -54,17 +54,17 @@ public class JobActionTests : TestBase
 
     [TestMethod]
     [DrupalVersionDataSource]
-    public async Task ReportErrorAsync_ValidInput_PostsMessageAndReturnsRejectedStatus(int version)
+    public async Task RejectJobAsync_ValidInput_PostsReasonAndReturnsRejectedStatus(int version)
     {
         // Arrange
         var context = StartFixture(version);
         var actions = new JobActions(context, Files);
 
         // Act
-        var result = await actions.ReportErrorAsync(new ReportJobErrorRequest
+        var result = await actions.RejectJobAsync(new RejectJobRequest
         {
             JobId = Manifest.ReadJob.Id,
-            ErrorMessage = " Translation workflow failed. "
+            RejectionReason = " Translation workflow failed. "
         });
 
         // Assert
@@ -78,7 +78,7 @@ public class JobActionTests : TestBase
 
     [TestMethod]
     [DrupalVersionDataSource]
-    public async Task ReportErrorAsync_EmptyMessage_ThrowsWithoutCallingDrupal(int version)
+    public async Task RejectJobAsync_EmptyReason_ThrowsWithoutCallingDrupal(int version)
     {
         // Arrange
         var context = StartFixture(version);
@@ -86,14 +86,14 @@ public class JobActionTests : TestBase
 
         // Act
         var exception = await Assert.ThrowsExactlyAsync<PluginMisconfigurationException>(() =>
-            actions.ReportErrorAsync(new ReportJobErrorRequest
+            actions.RejectJobAsync(new RejectJobRequest
             {
                 JobId = Manifest.ReadJob.Id,
-                ErrorMessage = "  "
+                RejectionReason = "  "
             }));
 
         // Assert
-        StringAssert.Contains(exception.Message, "Error message is required");
+        StringAssert.Contains(exception.Message, "Rejection reason is required");
         Assert.IsEmpty(FixtureServer.Requests);
     }
 

@@ -113,7 +113,7 @@ public class LiveDrupalTests : TestBase
     }
 
     [TestMethod]
-    public async Task ReportErrorAndStatusChanged_Drupal11Live_RejectsJobAndTriggers()
+    public async Task RejectJobAndStatusChanged_Drupal11Live_RejectsJobAndTriggers()
     {
         // Arrange
         var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
@@ -138,10 +138,10 @@ public class LiveDrupalTests : TestBase
             });
 
         // Act
-        var actionResult = await actions.ReportErrorAsync(new ReportJobErrorRequest
+        var actionResult = await actions.RejectJobAsync(new RejectJobRequest
         {
             JobId = job.ContentId,
-            ErrorMessage = "Blackbird connector live-test failure"
+            RejectionReason = "Blackbird connector live-test failure"
         });
         var eventResult = await polling.OnJobStatusChanged(
             new PollingEventRequest<JobStatusMemory> { Memory = baseline.Memory },

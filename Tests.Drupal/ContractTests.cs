@@ -4,6 +4,9 @@ using Apps.Drupal.Models.Identifiers;
 using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling;
+using Apps.Drupal.Webhooks;
+using Blackbird.Applications.Sdk.Common.Polling;
+using Blackbird.Applications.Sdk.Common.Webhooks;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 using Newtonsoft.Json;
@@ -52,12 +55,14 @@ public class ContractTests
         var download = typeof(JobActions).GetMethod(nameof(JobActions.GetXliffFromJobAsync));
         var upload = typeof(JobActions).GetMethod(nameof(JobActions.TranslateJobAsync));
         var polling = typeof(PollingList).GetMethod(nameof(PollingList.OnTranslationJobRequested));
+        var webhook = typeof(WebhookList).GetMethod(nameof(WebhookList.OnTranslationJobsRequested));
 
         // Act / Assert
         Assert.HasCount(1, search!.GetCustomAttributes(typeof(BlueprintActionDefinitionAttribute), false));
         Assert.HasCount(1, download!.GetCustomAttributes(typeof(BlueprintActionDefinitionAttribute), false));
         Assert.HasCount(1, upload!.GetCustomAttributes(typeof(BlueprintActionDefinitionAttribute), false));
-        Assert.HasCount(1, polling!.GetCustomAttributes(typeof(BlueprintEventDefinitionAttribute), false));
+        Assert.IsEmpty(polling!.GetCustomAttributes(typeof(BlueprintEventDefinitionAttribute), false));
+        Assert.HasCount(1, webhook!.GetCustomAttributes(typeof(BlueprintEventDefinitionAttribute), false));
     }
 
     [TestMethod]
@@ -73,6 +78,41 @@ public class ContractTests
         CollectionAssert.AreEquivalent(
             new[] { "active", "rejected", "completed", "aborted" },
             states.Select(state => state.Value).ToArray());
+    }
+
+    [TestMethod]
+    public void EventNames_WebhooksReplaceDeprecatedPollingNames()
+    {
+        // Arrange
+        var pollingMethods = new[]
+        {
+            typeof(PollingList).GetMethod(nameof(PollingList.OnTranslationJobRequested)),
+            typeof(PollingList).GetMethod(nameof(PollingList.OnJobStatusChanged))
+        };
+        var webhookMethods = new[]
+        {
+            typeof(WebhookList).GetMethod(nameof(WebhookList.OnTranslationJobsRequested)),
+            typeof(WebhookList).GetMethod(nameof(WebhookList.OnJobStatusesChanged))
+        };
+
+        // Act
+        var pollingNames = pollingMethods.Select(method => method!
+            .GetCustomAttributes(typeof(PollingEventAttribute), false)
+            .Cast<PollingEventAttribute>()
+            .Single()
+            .Name);
+        var webhookNames = webhookMethods.Select(method => method!
+            .GetCustomAttributes(typeof(WebhookAttribute), false)
+            .Cast<WebhookAttribute>()
+            .Single()
+            .Name);
+
+        // Assert
+        Assert.IsTrue(pollingNames.All(name =>
+            name?.EndsWith(" (deprecated)", StringComparison.Ordinal) == true));
+        CollectionAssert.AreEquivalent(
+            new[] { "On translation jobs requested", "On job statuses changed" },
+            webhookNames.ToArray());
     }
 
     [TestMethod]

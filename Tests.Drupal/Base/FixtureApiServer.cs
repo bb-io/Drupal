@@ -40,6 +40,38 @@ public sealed class FixtureApiServer : IDisposable
         MapJob(manifest.UploadJob.Id, uploadJobHtml);
         MapInvalidKey("/api/tmgmt/blackbird/languages");
         MapInvalidKey("/api/tmgmt/blackbird/jobs");
+
+        const string sharedWebhookUrl = "https://hooks.blackbird.io/drupal/shared-fixture";
+        server.Given(Request.Create()
+                .WithPath("/api/tmgmt/blackbird/webhooks")
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody($$"""
+                    [
+                      {"id":"submitted-subscription","url":"{{sharedWebhookUrl}}","events":["translation_jobs.submitted"]},
+                      {"id":"status-subscription","url":"{{sharedWebhookUrl}}","events":["translation_job.status_changed"]}
+                    ]
+                    """));
+        server.Given(Request.Create()
+                .WithPath("/api/tmgmt/blackbird/webhooks")
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(201)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody("{}"));
+        foreach (var subscriptionId in new[] { "submitted-subscription", "status-subscription" })
+        {
+            server.Given(Request.Create()
+                    .WithPath($"/api/tmgmt/blackbird/webhooks/{subscriptionId}")
+                    .WithHeader("x-api-key", ValidApiKey)
+                    .UsingDelete())
+                .RespondWith(Response.Create().WithStatusCode(204));
+        }
+        MapInvalidKey("/api/tmgmt/blackbird/webhooks");
     }
 
     public string Url => server.Urls[0];
@@ -71,7 +103,7 @@ public sealed class FixtureApiServer : IDisposable
     private void MapJob(string jobId, string html)
     {
         var path = $"/api/tmgmt/blackbird/job/{jobId}";
-        var errorPath = $"{path}/error";
+        var rejectPath = $"{path}/reject";
         MapGet(path, html, "text/html; charset=UTF-8");
         server.Given(Request.Create()
                 .WithPath(path)
@@ -79,7 +111,7 @@ public sealed class FixtureApiServer : IDisposable
                 .UsingPost())
             .RespondWith(Response.Create().WithStatusCode(200));
         server.Given(Request.Create()
-                .WithPath(errorPath)
+                .WithPath(rejectPath)
                 .WithHeader("x-api-key", ValidApiKey)
                 .UsingPost())
             .RespondWith(Response.Create()
@@ -87,7 +119,7 @@ public sealed class FixtureApiServer : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"rejected\"}}"));
         MapInvalidKey(path);
-        MapInvalidKey(errorPath);
+        MapInvalidKey(rejectPath);
     }
 
     private void MapInvalidKey(string path)

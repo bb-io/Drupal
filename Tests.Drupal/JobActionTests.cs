@@ -71,7 +71,7 @@ public class JobActionTests : TestBase
         Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
         Assert.AreEqual("rejected", result.Status);
         var request = FixtureServer.LastRequest(
-            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/error");
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/reject");
         var body = JObject.Parse(request.Body!);
         Assert.AreEqual("Translation workflow failed.", body["message"]?.Value<string>());
     }

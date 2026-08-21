@@ -52,7 +52,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
             throw new PluginMisconfigurationException("Rejection reason is required.");
         }
 
-        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/error", Method.Post, Creds)
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/reject", Method.Post, Creds)
             .AddJsonBody(new { message = input.RejectionReason.Trim() });
 
         return await Client.ExecuteWithErrorHandling<RejectJobResponse>(request)

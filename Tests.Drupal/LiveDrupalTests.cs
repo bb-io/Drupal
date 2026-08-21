@@ -8,6 +8,9 @@ using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling;
 using Apps.Drupal.Polling.Models;
 using Apps.Drupal.Polling.Models.Requests;
+using Apps.Drupal.Webhooks;
+using Apps.Drupal.Webhooks.Handlers;
+using Apps.Drupal.Webhooks.Models;
 using Blackbird.Applications.Sdk.Common.Dynamic;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Polling;
@@ -15,6 +18,7 @@ using Blackbird.Filters.Bilingual.Xliff1;
 using Blackbird.Filters.Enums;
 using Blackbird.Filters.Transformations;
 using HtmlAgilityPack;
+using Newtonsoft.Json;
 using Tests.Drupal.Base;
 
 namespace Tests.Drupal;
@@ -23,6 +27,60 @@ namespace Tests.Drupal;
 [DoNotParallelize]
 public class LiveDrupalTests : TestBase
 {
+    [TestMethod]
+    public async Task WebhookHandlers_Drupal11Live_KeepSharedCallbackTopicsIsolatedAndCleanUp()
+    {
+        // Arrange
+        var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
+        var context = CreateLiveInvocationContext(liveContext);
+        var submitted = new TranslationJobsSubmittedHandler(context);
+        var statusChanged = new TranslationJobStatusChangedHandler(context);
+        var values = new Dictionary<string, string>
+        {
+            ["payloadUrl"] = "http://webhook-capture:8080/blackbird-app-live-test"
+        };
+        await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+        await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+
+        try
+        {
+            // Act
+            await submitted.SubscribeAsync(context.AuthenticationCredentialsProviders, values);
+            await statusChanged.SubscribeAsync(context.AuthenticationCredentialsProviders, values);
+
+            using var httpClient = new HttpClient { BaseAddress = new Uri(liveContext.BaseUrl) };
+            httpClient.DefaultRequestHeaders.Add("x-api-key", liveContext.ApiKey);
+            var subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
+                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
+
+            // Assert
+            var testSubscriptions = subscriptions.Where(item => item.Url == values["payloadUrl"]).ToList();
+            Assert.HasCount(2, testSubscriptions);
+            CollectionAssert.AreEquivalent(
+                new[] { WebhookTopics.TranslationJobsSubmitted, WebhookTopics.TranslationJobStatusChanged },
+                testSubscriptions.SelectMany(item => item.Events).ToArray());
+
+            await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+            subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
+                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
+            testSubscriptions = subscriptions.Where(item => item.Url == values["payloadUrl"]).ToList();
+            Assert.HasCount(1, testSubscriptions);
+            CollectionAssert.AreEqual(
+                new[] { WebhookTopics.TranslationJobStatusChanged },
+                testSubscriptions[0].Events);
+
+            await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+            subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
+                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
+            Assert.IsFalse(subscriptions.Any(item => item.Url == values["payloadUrl"]));
+        }
+        finally
+        {
+            await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+            await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
+        }
+    }
+
     [TestMethod]
     [LiveContextDataSource]
     public async Task ValidateConnection_LiveDemo_ReturnsValid(LiveContext liveContext)

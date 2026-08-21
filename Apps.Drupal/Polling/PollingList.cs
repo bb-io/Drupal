@@ -8,14 +8,13 @@ using Apps.Drupal.Services;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
-using Blackbird.Applications.SDK.Blueprints;
 
 namespace Apps.Drupal.Polling;
 
 [PollingEventList]
 public class PollingList(InvocationContext invocationContext) : AppInvocable(invocationContext)
 {
-    [PollingEvent("On job status changed", Description = "Outputs jobs whose status changed since the previous poll")]
+    [PollingEvent("On job statuses changed (deprecated)", Description = "Deprecated. Outputs jobs whose status changed since the previous poll")]
     public async Task<PollingEventResponse<JobStatusMemory, JobStatusChangedResponse>> OnJobStatusChanged(
         PollingEventRequest<JobStatusMemory> request,
         [PollingEventParameter] JobStatusChangedPollingParameters parameters)
@@ -101,8 +100,7 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         };
     }
 
-    [PollingEvent("On translation jobs requested", Description = "Outputs newly requested translation jobs")]
-    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
+    [PollingEvent("On translation jobs requested (deprecated)", Description = "Deprecated. Outputs newly requested translation jobs")]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] TranslationJobsPollingParameters parameters)

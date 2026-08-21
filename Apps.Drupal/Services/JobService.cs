@@ -28,6 +28,11 @@ public class JobService(ApiClient client, IEnumerable<AuthenticationCredentialsP
             request.AddQueryParameter("target", filter.TargetLanguage);
         }
 
+        if (filter.NoteContains is not null)
+        {
+            request.AddQueryParameter("note_contains", filter.NoteContains);
+        }
+
         var jobs = await client.ExecuteWithErrorHandling<List<JobResponse>>(request) ?? [];
         foreach (var job in jobs)
         {

@@ -58,14 +58,18 @@ For multi-language checkout, select all target languages in Drupal and leave **S
   - **State**: Filter jobs by unprocessed, active, rejected, completed, or aborted state. Defaults to unprocessed jobs.
   - **Target language**: Filter jobs by target language.
   - **Created after**: Filter jobs created on or after the selected date and time.
+  - **Note contains**: Filter jobs whose provider note contains supplied text, regardless of case.
 - **Download job content**: Download assembled content from a translation job.
     Advanced settings:
   - **File format**: Select `Original` to download content without interoperability metadata. Default output includes metadata and stable field keys needed for content roundtrip.
   - **Accept job**: Accept job after downloaded file reaches file manager. Defaults to `true`.
+  - **Note**: Set optional provider note after downloaded file reaches file manager. Maximum 255 characters; empty string clears existing note.
 - **Upload job content**: Upload translated content to a translation job and output content with updated target metadata. **Content** and **Target language** are required. Target language must match the job configuration. Supports content produced from HTML, XLIFF 1, or XLIFF 2 workflows.
     Advanced settings:
   - **Job ID**: Override the Job ID embedded in the content. Leave empty when the content still contains its original Job ID.
 - **Accept job**: Accept unprocessed translation job and move it to active state. Repeated requests for active job are idempotent.
+- **Get job note**: Get provider note shown under **Provider information** on translation job page.
+- **Set job note**: Set provider note shown under **Provider information**. Maximum 255 characters; empty string clears note.
 - **Reject job**: Reject active translation job and record supplied reason in Drupal. Repeated rejection requests for same rejected job are idempotent.
 
 ## Events

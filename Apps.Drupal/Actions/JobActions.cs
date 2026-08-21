@@ -52,6 +52,43 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
             ?? throw new PluginApplicationException("Drupal returned an empty job-acceptance response.");
     }
 
+    [Action("Get job note", Description = "Get provider note shown on a translation job")]
+    public async Task<JobNoteResponse> GetJobNoteAsync([ActionParameter] JobNoteIdentifier input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/note", Method.Get, Creds);
+        return await Client.ExecuteWithErrorHandling<JobNoteResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-note response.");
+    }
+
+    [Action("Set job note", Description = "Set provider note shown on a translation job")]
+    public async Task<JobNoteResponse> SetJobNoteAsync([ActionParameter] SetJobNoteRequest input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        if (input.Note is null)
+        {
+            throw new PluginMisconfigurationException("Note is required. Use an empty string to clear the note.");
+        }
+
+        if (input.Note.EnumerateRunes().Count() > 255)
+        {
+            throw new PluginMisconfigurationException("Note must not exceed 255 characters.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/note", Method.Post, Creds)
+            .AddJsonBody(new { note = input.Note });
+        return await Client.ExecuteWithErrorHandling<JobNoteResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-note response.");
+    }
+
     [Action("Reject job", Description = "Reject an active translation job and record the reason in Drupal")]
     public async Task<RejectJobResponse> RejectJobAsync([ActionParameter] RejectJobRequest input)
     {
@@ -76,6 +113,11 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
     [BlueprintActionDefinition(BlueprintAction.DownloadContent)]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
+        if (identifier.Note is not null && identifier.Note.EnumerateRunes().Count() > 255)
+        {
+            throw new PluginMisconfigurationException("Note must not exceed 255 characters.");
+        }
+
         var jobService = new JobService(Client, Creds);
         JobResponse? job = null;
         foreach (var state in new[] { "unprocessed", "active", "completed", "aborted" })
@@ -108,6 +150,15 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
                     "text/html",
                     $"{identifier.ContentId}.html")
             };
+            if (identifier.Note is not null)
+            {
+                await SetJobNoteAsync(new SetJobNoteRequest
+                {
+                    JobId = identifier.ContentId,
+                    Note = identifier.Note
+                });
+            }
+
             if (identifier.AcceptJob ?? true)
             {
                 await AcceptJobAsync(new AcceptJobRequest { JobId = identifier.ContentId });
@@ -185,6 +236,15 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
                 "text/html",
                 $"{identifier.ContentId}.html")
         };
+        if (identifier.Note is not null)
+        {
+            await SetJobNoteAsync(new SetJobNoteRequest
+            {
+                JobId = identifier.ContentId,
+                Note = identifier.Note
+            });
+        }
+
         if (identifier.AcceptJob ?? true)
         {
             await AcceptJobAsync(new AcceptJobRequest { JobId = identifier.ContentId });

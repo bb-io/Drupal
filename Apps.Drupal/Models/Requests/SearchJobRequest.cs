@@ -16,4 +16,7 @@ public class SearchJobRequest
     
     [Display("Created after", Description = "Filter jobs created on or after this date")]
     public DateTime? CreatedAfter { get; set; }
+
+    [Display("Note contains", Description = "Filter jobs whose provider note contains this text, regardless of case")]
+    public string? NoteContains { get; set; }
 }

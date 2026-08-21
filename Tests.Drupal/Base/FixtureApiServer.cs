@@ -72,6 +72,7 @@ public sealed class FixtureApiServer : IDisposable
     {
         var path = $"/api/tmgmt/blackbird/job/{jobId}";
         var acceptPath = $"{path}/accept";
+        var notePath = $"{path}/note";
         var rejectPath = $"{path}/reject";
         MapGet(path, html, "text/html; charset=UTF-8");
         server.Given(Request.Create()
@@ -88,6 +89,22 @@ public sealed class FixtureApiServer : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"active\"}}"));
         server.Given(Request.Create()
+                .WithPath(notePath)
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingGet())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody($"{{\"id\":\"{jobId}\",\"note\":\"\"}}"));
+        server.Given(Request.Create()
+                .WithPath(notePath)
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody($"{{\"id\":\"{jobId}\",\"note\":\"Blackbird workflow 12345\"}}"));
+        server.Given(Request.Create()
                 .WithPath(rejectPath)
                 .WithHeader("x-api-key", ValidApiKey)
                 .UsingPost())
@@ -97,6 +114,7 @@ public sealed class FixtureApiServer : IDisposable
                 .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"rejected\"}}"));
         MapInvalidKey(path);
         MapInvalidKey(acceptPath);
+        MapInvalidKey(notePath);
         MapInvalidKey(rejectPath);
     }
 

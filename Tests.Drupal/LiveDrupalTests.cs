@@ -259,14 +259,28 @@ public class LiveDrupalTests : TestBase
             FileFormat = "original"
         });
         var originalHtml = Files.ReadOutputText(original.Content);
+        var downloadNote = $"Blackbird download test Drupal {liveContext.Version}";
         var decorated = await actions.GetXliffFromJobAsync(new JobIdentifier
         {
-            ContentId = job.ContentId
+            ContentId = job.ContentId,
+            Note = downloadNote
         });
+        var noteAfterDownload = await actions.GetJobNoteAsync(new JobNoteIdentifier { JobId = job.ContentId });
+        var updatedNote = $"Blackbird updated note Drupal {liveContext.Version}";
+        var setNote = await actions.SetJobNoteAsync(new SetJobNoteRequest
+        {
+            JobId = job.ContentId,
+            Note = updatedNote
+        });
+        var noteAfterSet = await actions.GetJobNoteAsync(new JobNoteIdentifier { JobId = job.ContentId });
 
         // Assert
         Assert.IsFalse(originalHtml.Contains("blackbird-ucid", StringComparison.Ordinal));
         AssertDecoratedHtml(Files.ReadOutputText(decorated.Content), job, liveContext.BaseUrl.TrimEnd('/'));
+        Assert.AreEqual(job.ContentId, noteAfterDownload.JobId);
+        Assert.AreEqual(downloadNote, noteAfterDownload.Note);
+        Assert.AreEqual(updatedNote, setNote.Note);
+        Assert.AreEqual(updatedNote, noteAfterSet.Note);
     }
 
     [TestMethod]

@@ -8,7 +8,7 @@ namespace Apps.Drupal.Models.Requests;
 
 public class SearchJobRequest
 {
-    [Display("State", Description = "Filter jobs by state. Defaults to active jobs"), StaticDataSource(typeof(JobStateDataHandler))]
+    [Display("State", Description = "Filter jobs by state. Defaults to unprocessed jobs"), StaticDataSource(typeof(JobStateDataHandler))]
     public string? State { get; set; }
     
     [Display("Target language", Description = "Filter jobs by target language"), DataSource(typeof(LanguagesDataHandler))]

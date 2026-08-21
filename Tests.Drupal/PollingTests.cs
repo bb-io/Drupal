@@ -55,11 +55,12 @@ public class PollingTests : TestBase
         Assert.IsTrue(result.FlyBird);
         Assert.IsNotNull(result.Result);
         CollectionAssert.AreEquivalent(
-            new[] { Manifest.ReadJob.Id, Manifest.UploadJob.Id },
+            new[] { Manifest.ReadJob.Id, Manifest.UploadJob.Id, Manifest.StatusJob.Id },
             result.Result.Items.Select(job => job.ContentId).ToArray());
-        Assert.AreEqual(2, result.Result.TotalCount);
+        Assert.AreEqual(3, result.Result.TotalCount);
         var request = FixtureServer.LastRequest("GET", "/api/tmgmt/blackbird/jobs");
         Assert.AreEqual((Manifest.ReadJob.Created - 1).ToString(), request.Query!["created"].Single());
+        Assert.AreEqual("unprocessed", request.Query["state"].Single());
     }
 
     [TestMethod]
@@ -126,8 +127,9 @@ public class PollingTests : TestBase
         Assert.IsFalse(result.FlyBird);
         Assert.IsNull(result.Result);
         Assert.IsNotNull(result.Memory);
-        Assert.AreEqual("active", result.Memory.JobStatuses[Manifest.ReadJob.Id]);
-        Assert.AreEqual("active", result.Memory.JobStatuses[Manifest.UploadJob.Id]);
+        Assert.AreEqual("unprocessed", result.Memory.JobStatuses[Manifest.ReadJob.Id]);
+        Assert.AreEqual("unprocessed", result.Memory.JobStatuses[Manifest.UploadJob.Id]);
+        Assert.AreEqual("unprocessed", result.Memory.JobStatuses[Manifest.StatusJob.Id]);
         Assert.AreEqual(DateTimeKind.Utc, result.Memory.LastPollingTime.Kind);
     }
 
@@ -149,13 +151,13 @@ public class PollingTests : TestBase
                     JobStatuses = new Dictionary<string, string>
                     {
                         [Manifest.ReadJob.Id] = "rejected",
-                        [Manifest.UploadJob.Id] = "active"
+                        [Manifest.UploadJob.Id] = "unprocessed"
                     }
                 }
             },
             new JobStatusChangedPollingParameters
             {
-                Statuses = ["active", "completed"],
+                Statuses = ["unprocessed", "completed"],
                 JobId = Manifest.ReadJob.Id,
                 JobLabelContains = "CAPTURE READ"
             });
@@ -166,8 +168,8 @@ public class PollingTests : TestBase
         Assert.HasCount(1, result.Result.Items);
         Assert.AreEqual(Manifest.ReadJob.Id, result.Result.Items[0].ContentId);
         Assert.AreEqual("rejected", result.Result.Items[0].PreviousStatus);
-        Assert.AreEqual("active", result.Result.Items[0].Status);
-        Assert.AreEqual("active", result.Memory!.JobStatuses[Manifest.ReadJob.Id]);
+        Assert.AreEqual("unprocessed", result.Result.Items[0].Status);
+        Assert.AreEqual("unprocessed", result.Memory!.JobStatuses[Manifest.ReadJob.Id]);
         Assert.AreEqual(1, result.Result.TotalCount);
     }
 
@@ -188,7 +190,7 @@ public class PollingTests : TestBase
                     LastPollingTime = DateTime.UtcNow.AddMinutes(-5),
                     JobStatuses = new Dictionary<string, string>
                     {
-                        [Manifest.ReadJob.Id] = "active",
+                        [Manifest.ReadJob.Id] = "unprocessed",
                         [Manifest.UploadJob.Id] = "rejected"
                     }
                 }
@@ -203,7 +205,43 @@ public class PollingTests : TestBase
         Assert.IsFalse(result.FlyBird);
         Assert.IsNull(result.Result);
         Assert.IsNotNull(result.Memory);
-        Assert.AreEqual("active", result.Memory.JobStatuses[Manifest.UploadJob.Id]);
+        Assert.AreEqual("unprocessed", result.Memory.JobStatuses[Manifest.UploadJob.Id]);
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task OnJobStatusChanged_NewUnprocessedJob_FliesWithEmptyPreviousStatus(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var polling = new PollingList(context);
+
+        // Act
+        var result = await polling.OnJobStatusChanged(
+            new PollingEventRequest<JobStatusMemory>
+            {
+                Memory = new JobStatusMemory
+                {
+                    LastPollingTime = DateTime.UtcNow.AddMinutes(-5),
+                    JobStatuses = new Dictionary<string, string>
+                    {
+                        [Manifest.UploadJob.Id] = "unprocessed"
+                    }
+                }
+            },
+            new JobStatusChangedPollingParameters
+            {
+                Statuses = ["unprocessed"],
+                JobId = Manifest.ReadJob.Id
+            });
+
+        // Assert
+        Assert.IsTrue(result.FlyBird);
+        Assert.IsNotNull(result.Result);
+        Assert.HasCount(1, result.Result.Items);
+        Assert.AreEqual(Manifest.ReadJob.Id, result.Result.Items[0].ContentId);
+        Assert.AreEqual(string.Empty, result.Result.Items[0].PreviousStatus);
+        Assert.AreEqual("unprocessed", result.Result.Items[0].Status);
     }
 
     [TestMethod]

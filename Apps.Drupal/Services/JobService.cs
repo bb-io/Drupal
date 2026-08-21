@@ -31,7 +31,7 @@ public class JobService(ApiClient client, IEnumerable<AuthenticationCredentialsP
         var jobs = await client.ExecuteWithErrorHandling<List<JobResponse>>(request) ?? [];
         foreach (var job in jobs)
         {
-            job.Status = filter.State ?? "active";
+            job.Status = filter.State ?? "unprocessed";
         }
 
         return jobs;

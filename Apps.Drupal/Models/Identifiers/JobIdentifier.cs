@@ -16,5 +16,8 @@ public class JobIdentifier : IDownloadContentInput
     [StaticDataSource(typeof(DownloadFileFormatHandler))]
     public string? FileFormat { get; set; }
 
+    [Display("Accept job", Description = "Accept job after content is downloaded and uploaded to file manager")]
+    public bool? AcceptJob { get; set; } = true;
+
     public override string ToString() => ContentId;
 }

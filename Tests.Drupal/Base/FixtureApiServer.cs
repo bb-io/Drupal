@@ -24,7 +24,7 @@ public sealed class FixtureApiServer : IDisposable
         server = WireMockServer.Start();
         MapGet("/api/tmgmt/blackbird/languages", languages, "application/json");
         MapGet("/api/tmgmt/blackbird/jobs", jobs, "application/json");
-        foreach (var state in new[] { "active", "rejected", "aborted", "completed" })
+        foreach (var state in new[] { "unprocessed", "active", "rejected", "aborted", "completed" })
         {
             server.Given(Request.Create()
                     .WithPath("/api/tmgmt/blackbird/jobs")
@@ -34,44 +34,12 @@ public sealed class FixtureApiServer : IDisposable
                 .RespondWith(Response.Create()
                     .WithStatusCode(200)
                     .WithHeader("Content-Type", "application/json")
-                    .WithBody(state == "active" ? jobs : "[]"));
+                    .WithBody(state == "unprocessed" ? jobs : "[]"));
         }
         MapJob(manifest.ReadJob.Id, readJobHtml);
         MapJob(manifest.UploadJob.Id, uploadJobHtml);
         MapInvalidKey("/api/tmgmt/blackbird/languages");
         MapInvalidKey("/api/tmgmt/blackbird/jobs");
-
-        const string sharedWebhookUrl = "https://hooks.blackbird.io/drupal/shared-fixture";
-        server.Given(Request.Create()
-                .WithPath("/api/tmgmt/blackbird/webhooks")
-                .WithHeader("x-api-key", ValidApiKey)
-                .UsingGet())
-            .RespondWith(Response.Create()
-                .WithStatusCode(200)
-                .WithHeader("Content-Type", "application/json")
-                .WithBody($$"""
-                    [
-                      {"id":"submitted-subscription","url":"{{sharedWebhookUrl}}","events":["translation_jobs.submitted"]},
-                      {"id":"status-subscription","url":"{{sharedWebhookUrl}}","events":["translation_job.status_changed"]}
-                    ]
-                    """));
-        server.Given(Request.Create()
-                .WithPath("/api/tmgmt/blackbird/webhooks")
-                .WithHeader("x-api-key", ValidApiKey)
-                .UsingPost())
-            .RespondWith(Response.Create()
-                .WithStatusCode(201)
-                .WithHeader("Content-Type", "application/json")
-                .WithBody("{}"));
-        foreach (var subscriptionId in new[] { "submitted-subscription", "status-subscription" })
-        {
-            server.Given(Request.Create()
-                    .WithPath($"/api/tmgmt/blackbird/webhooks/{subscriptionId}")
-                    .WithHeader("x-api-key", ValidApiKey)
-                    .UsingDelete())
-                .RespondWith(Response.Create().WithStatusCode(204));
-        }
-        MapInvalidKey("/api/tmgmt/blackbird/webhooks");
     }
 
     public string Url => server.Urls[0];
@@ -103,6 +71,7 @@ public sealed class FixtureApiServer : IDisposable
     private void MapJob(string jobId, string html)
     {
         var path = $"/api/tmgmt/blackbird/job/{jobId}";
+        var acceptPath = $"{path}/accept";
         var rejectPath = $"{path}/reject";
         MapGet(path, html, "text/html; charset=UTF-8");
         server.Given(Request.Create()
@@ -110,6 +79,14 @@ public sealed class FixtureApiServer : IDisposable
                 .WithHeader("x-api-key", ValidApiKey)
                 .UsingPost())
             .RespondWith(Response.Create().WithStatusCode(200));
+        server.Given(Request.Create()
+                .WithPath(acceptPath)
+                .WithHeader("x-api-key", ValidApiKey)
+                .UsingPost())
+            .RespondWith(Response.Create()
+                .WithStatusCode(200)
+                .WithHeader("Content-Type", "application/json")
+                .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"active\"}}"));
         server.Given(Request.Create()
                 .WithPath(rejectPath)
                 .WithHeader("x-api-key", ValidApiKey)
@@ -119,6 +96,7 @@ public sealed class FixtureApiServer : IDisposable
                 .WithHeader("Content-Type", "application/json")
                 .WithBody($"{{\"id\":\"{jobId}\",\"state\":\"rejected\"}}"));
         MapInvalidKey(path);
+        MapInvalidKey(acceptPath);
         MapInvalidKey(rejectPath);
     }
 

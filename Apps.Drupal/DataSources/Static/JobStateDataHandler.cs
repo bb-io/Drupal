@@ -9,6 +9,7 @@ public class JobStateDataHandler : IStaticDataSourceItemHandler
     {
         return new[]
         {
+            new DataSourceItem("unprocessed", "Unprocessed"),
             new DataSourceItem("active", "Active"),
             new DataSourceItem("rejected", "Rejected"),
             new DataSourceItem("aborted", "Aborted"),

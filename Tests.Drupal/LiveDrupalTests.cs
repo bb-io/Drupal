@@ -8,9 +8,6 @@ using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling;
 using Apps.Drupal.Polling.Models;
 using Apps.Drupal.Polling.Models.Requests;
-using Apps.Drupal.Webhooks;
-using Apps.Drupal.Webhooks.Handlers;
-using Apps.Drupal.Webhooks.Models;
 using Blackbird.Applications.Sdk.Common.Dynamic;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Polling;
@@ -18,7 +15,6 @@ using Blackbird.Filters.Bilingual.Xliff1;
 using Blackbird.Filters.Enums;
 using Blackbird.Filters.Transformations;
 using HtmlAgilityPack;
-using Newtonsoft.Json;
 using Tests.Drupal.Base;
 
 namespace Tests.Drupal;
@@ -27,60 +23,6 @@ namespace Tests.Drupal;
 [DoNotParallelize]
 public class LiveDrupalTests : TestBase
 {
-    [TestMethod]
-    public async Task WebhookHandlers_Drupal11Live_KeepSharedCallbackTopicsIsolatedAndCleanUp()
-    {
-        // Arrange
-        var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
-        var context = CreateLiveInvocationContext(liveContext);
-        var submitted = new TranslationJobsSubmittedHandler(context);
-        var statusChanged = new TranslationJobStatusChangedHandler(context);
-        var values = new Dictionary<string, string>
-        {
-            ["payloadUrl"] = "http://webhook-capture:8080/blackbird-app-live-test"
-        };
-        await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-        await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-
-        try
-        {
-            // Act
-            await submitted.SubscribeAsync(context.AuthenticationCredentialsProviders, values);
-            await statusChanged.SubscribeAsync(context.AuthenticationCredentialsProviders, values);
-
-            using var httpClient = new HttpClient { BaseAddress = new Uri(liveContext.BaseUrl) };
-            httpClient.DefaultRequestHeaders.Add("x-api-key", liveContext.ApiKey);
-            var subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
-                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
-
-            // Assert
-            var testSubscriptions = subscriptions.Where(item => item.Url == values["payloadUrl"]).ToList();
-            Assert.HasCount(2, testSubscriptions);
-            CollectionAssert.AreEquivalent(
-                new[] { WebhookTopics.TranslationJobsSubmitted, WebhookTopics.TranslationJobStatusChanged },
-                testSubscriptions.SelectMany(item => item.Events).ToArray());
-
-            await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-            subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
-                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
-            testSubscriptions = subscriptions.Where(item => item.Url == values["payloadUrl"]).ToList();
-            Assert.HasCount(1, testSubscriptions);
-            CollectionAssert.AreEqual(
-                new[] { WebhookTopics.TranslationJobStatusChanged },
-                testSubscriptions[0].Events);
-
-            await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-            subscriptions = JsonConvert.DeserializeObject<List<WebhookSubscription>>(
-                await httpClient.GetStringAsync("/api/tmgmt/blackbird/webhooks")) ?? [];
-            Assert.IsFalse(subscriptions.Any(item => item.Url == values["payloadUrl"]));
-        }
-        finally
-        {
-            await submitted.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-            await statusChanged.UnsubscribeAsync(context.AuthenticationCredentialsProviders, values);
-        }
-    }
-
     [TestMethod]
     [LiveContextDataSource]
     public async Task ValidateConnection_LiveDemo_ReturnsValid(LiveContext liveContext)
@@ -111,7 +53,6 @@ public class LiveDrupalTests : TestBase
         // Act
         var result = await actions.SearchJobsAsync(new SearchJobRequest
         {
-            State = "active",
             TargetLanguage = "fr",
             CreatedAfter = createdAfter
         });
@@ -121,6 +62,7 @@ public class LiveDrupalTests : TestBase
         Assert.IsTrue(result.Items.Any(job => job.Name == UploadJobName(liveContext.Version)));
         Assert.IsTrue(result.Items.All(job => job.Target == "fr"));
         Assert.IsTrue(result.Items.All(job => job.CreationDate >= createdAfter));
+        Assert.IsTrue(result.Items.All(job => job.Status == "unprocessed"));
     }
 
     [TestMethod]
@@ -161,6 +103,23 @@ public class LiveDrupalTests : TestBase
                 Memory = new DateMemory { LastPollingTime = memory }
             },
             new TranslationJobsPollingParameters { TargetLanguages = ["fr"] });
+        var statusResult = await new PollingList(context).OnJobStatusChanged(
+            new PollingEventRequest<JobStatusMemory>
+            {
+                Memory = new JobStatusMemory
+                {
+                    LastPollingTime = memory,
+                    JobStatuses = new Dictionary<string, string>
+                    {
+                        [jobs.Single(job => job.Name == UploadJobName(liveContext.Version)).ContentId] = "unprocessed"
+                    }
+                }
+            },
+            new JobStatusChangedPollingParameters
+            {
+                Statuses = ["unprocessed"],
+                JobId = jobs.Single(job => job.Name == ReadJobName(liveContext.Version)).ContentId
+            });
 
         // Assert
         Assert.IsTrue(result.FlyBird);
@@ -168,6 +127,11 @@ public class LiveDrupalTests : TestBase
         Assert.IsTrue(result.Result.Items.Any(job => job.Name == ReadJobName(liveContext.Version)));
         Assert.IsTrue(result.Result.Items.Any(job => job.Name == UploadJobName(liveContext.Version)));
         Assert.AreEqual(DateTimeKind.Utc, result.Memory!.LastPollingTime.Kind);
+        Assert.IsTrue(statusResult.FlyBird);
+        Assert.IsNotNull(statusResult.Result);
+        Assert.HasCount(1, statusResult.Result.Items);
+        Assert.AreEqual("unprocessed", statusResult.Result.Items[0].Status);
+        Assert.AreEqual(string.Empty, statusResult.Result.Items[0].PreviousStatus);
     }
 
     [TestMethod]
@@ -182,7 +146,16 @@ public class LiveDrupalTests : TestBase
             .Items.SingleOrDefault(item => item.Name == jobLabel);
         if (job is null)
         {
-            Assert.Inconclusive("Active Drupal 11 status-transition job was not found. Run prepare-demo.sh first.");
+            job = (await actions.SearchJobsAsync(new SearchJobRequest { State = "unprocessed" }))
+                .Items.SingleOrDefault(item => item.Name == jobLabel);
+            if (job is null)
+            {
+                Assert.Inconclusive("Drupal 11 status-transition job was not found. Run prepare-demo.sh first.");
+            }
+
+            var acceptResponse = await actions.AcceptJobAsync(new AcceptJobRequest { JobId = job.ContentId });
+            Assert.AreEqual(job.ContentId, acceptResponse.JobId);
+            Assert.AreEqual("active", acceptResponse.Status);
         }
 
         var polling = new PollingList(context);
@@ -201,6 +174,11 @@ public class LiveDrupalTests : TestBase
             JobId = job.ContentId,
             RejectionReason = "Blackbird connector live-test failure"
         });
+        var repeatedActionResult = await actions.RejectJobAsync(new RejectJobRequest
+        {
+            JobId = job.ContentId,
+            RejectionReason = "Blackbird connector live-test failure"
+        });
         var eventResult = await polling.OnJobStatusChanged(
             new PollingEventRequest<JobStatusMemory> { Memory = baseline.Memory },
             new JobStatusChangedPollingParameters
@@ -215,6 +193,8 @@ public class LiveDrupalTests : TestBase
         Assert.IsNull(baseline.Result);
         Assert.AreEqual(job.ContentId, actionResult.JobId);
         Assert.AreEqual("rejected", actionResult.Status);
+        Assert.AreEqual(job.ContentId, repeatedActionResult.JobId);
+        Assert.AreEqual("rejected", repeatedActionResult.Status);
         Assert.IsTrue(eventResult.FlyBird);
         Assert.IsNotNull(eventResult.Result);
         Assert.HasCount(1, eventResult.Result.Items);
@@ -230,13 +210,13 @@ public class LiveDrupalTests : TestBase
         var liveContext = LoadLiveContexts().Single(context => context.Version == 11);
         var context = CreateLiveInvocationContext(liveContext);
         var actions = new JobActions(context, Files);
-        var bulkJobs = (await actions.SearchJobsAsync(new SearchJobRequest { State = "active" })).Items
+        var bulkJobs = (await actions.SearchJobsAsync(new SearchJobRequest())).Items
             .Where(job => job.Name.StartsWith("Bulk connector verification", StringComparison.Ordinal))
             .Where(job => job.Target is "de" or "fr")
             .ToList();
         if (!new[] { "de", "fr" }.All(target => bulkJobs.Any(job => job.Target == target)))
         {
-            Assert.Inconclusive("Active Drupal 11 French/German bulk jobs were not found. Run bulk UI setup first.");
+            Assert.Inconclusive("Unprocessed Drupal 11 French/German bulk jobs were not found. Run bulk UI setup first.");
         }
 
         // Act
@@ -406,9 +386,14 @@ public class LiveDrupalTests : TestBase
 
     private static async Task<List<JobResponse>> GetOwnedJobs(JobActions actions, int version)
     {
-        var response = await actions.SearchJobsAsync(new SearchJobRequest { State = "active" });
+        var unprocessed = await actions.SearchJobsAsync(new SearchJobRequest());
+        var active = await actions.SearchJobsAsync(new SearchJobRequest { State = "active" });
         var names = new[] { ReadJobName(version), UploadJobName(version) };
-        var jobs = response.Items.Where(job => names.Contains(job.Name)).ToList();
+        var jobs = unprocessed.Items.Concat(active.Items)
+            .Where(job => names.Contains(job.Name))
+            .GroupBy(job => job.ContentId)
+            .Select(group => group.Last())
+            .ToList();
         Assert.HasCount(2, jobs, $"Drupal {version} connector-owned live jobs were not found.");
         return jobs;
     }

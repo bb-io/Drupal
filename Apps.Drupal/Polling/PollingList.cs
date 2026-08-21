@@ -8,13 +8,14 @@ using Apps.Drupal.Services;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
+using Blackbird.Applications.SDK.Blueprints;
 
 namespace Apps.Drupal.Polling;
 
 [PollingEventList]
 public class PollingList(InvocationContext invocationContext) : AppInvocable(invocationContext)
 {
-    [PollingEvent("On job statuses changed (deprecated)", Description = "Deprecated. Outputs jobs whose status changed since the previous poll")]
+    [PollingEvent("On job statuses changed", Description = "Outputs jobs whose status changed or new unprocessed jobs since the previous poll")]
     public async Task<PollingEventResponse<JobStatusMemory, JobStatusChangedResponse>> OnJobStatusChanged(
         PollingEventRequest<JobStatusMemory> request,
         [PollingEventParameter] JobStatusChangedPollingParameters parameters)
@@ -28,7 +29,7 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         var pollingTime = DateTime.UtcNow;
         var polledJobs = new List<JobResponse>();
         var jobService = new JobService(Client, Creds);
-        foreach (var status in new[] { "active", "rejected", "aborted", "completed" })
+        foreach (var status in new[] { "unprocessed", "active", "rejected", "aborted", "completed" })
         {
             polledJobs.AddRange(await jobService.SearchJobsAsync(new SearchJobRequest { State = status }));
         }
@@ -60,12 +61,15 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         }
 
         var changedJobs = currentJobs
-            .Where(job => request.Memory.JobStatuses.TryGetValue(job.ContentId, out var previousStatus) &&
-                          !string.Equals(previousStatus, job.Status, StringComparison.OrdinalIgnoreCase) &&
-                          selectedStatuses.Contains(job.Status) &&
-                          (string.IsNullOrWhiteSpace(parameters.JobId) || job.ContentId == parameters.JobId) &&
-                          (string.IsNullOrWhiteSpace(parameters.JobLabelContains) ||
-                           job.Name.Contains(parameters.JobLabelContains, StringComparison.OrdinalIgnoreCase)))
+            .Where(job =>
+                ((!request.Memory.JobStatuses.TryGetValue(job.ContentId, out var previousStatus) &&
+                  job.Status.Equals("unprocessed", StringComparison.OrdinalIgnoreCase)) ||
+                 (previousStatus is not null &&
+                  !string.Equals(previousStatus, job.Status, StringComparison.OrdinalIgnoreCase))) &&
+                selectedStatuses.Contains(job.Status) &&
+                (string.IsNullOrWhiteSpace(parameters.JobId) || job.ContentId == parameters.JobId) &&
+                (string.IsNullOrWhiteSpace(parameters.JobLabelContains) ||
+                 job.Name.Contains(parameters.JobLabelContains, StringComparison.OrdinalIgnoreCase)))
             .Select(job => new JobStatusChangedItem
             {
                 ContentId = job.ContentId,
@@ -74,7 +78,7 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
                 Target = job.Target,
                 Status = job.Status,
                 CreationDate = job.CreationDate,
-                PreviousStatus = request.Memory.JobStatuses[job.ContentId]
+                PreviousStatus = request.Memory.JobStatuses.GetValueOrDefault(job.ContentId, string.Empty)
             })
             .ToList();
 
@@ -100,7 +104,8 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
         };
     }
 
-    [PollingEvent("On translation jobs requested (deprecated)", Description = "Deprecated. Outputs newly requested translation jobs")]
+    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
+    [PollingEvent("On translation jobs requested", Description = "Outputs newly requested unprocessed translation jobs")]
     public async Task<PollingEventResponse<DateMemory, JobSearchResponse>> OnTranslationJobRequested(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] TranslationJobsPollingParameters parameters)
@@ -118,7 +123,8 @@ public class PollingList(InvocationContext invocationContext) : AppInvocable(inv
 
         var jobs = await new JobService(Client, Creds).SearchJobsAsync(new SearchJobRequest
         {
-            CreatedAfter = request.Memory.LastPollingTime
+            CreatedAfter = request.Memory.LastPollingTime,
+            State = "unprocessed"
         });
 
         if (parameters.TargetLanguages is not null)

@@ -21,7 +21,7 @@ public class DataHandlerTests : TestBase
             new DataSourceContext { SearchString = "fRe" }, CancellationToken.None)).ToList();
 
         // Assert
-        CollectionAssert.AreEquivalent(new[] { "en", "fr" }, all.Select(item => item.Value).ToArray());
+        CollectionAssert.AreEquivalent(new[] { "en", "de", "fr" }, all.Select(item => item.Value).ToArray());
         Assert.HasCount(1, filtered);
         Assert.AreEqual("fr", filtered[0].Value);
         Assert.AreEqual("French", filtered[0].DisplayName);
@@ -42,7 +42,7 @@ public class DataHandlerTests : TestBase
 
         // Assert
         CollectionAssert.AreEquivalent(
-            new[] { Manifest.ReadJob.Id, Manifest.UploadJob.Id },
+            new[] { Manifest.ReadJob.Id, Manifest.UploadJob.Id, Manifest.StatusJob.Id },
             all.Select(item => item.Value).ToArray());
         Assert.HasCount(1, filtered);
         Assert.AreEqual(Manifest.UploadJob.Id, filtered[0].Value);

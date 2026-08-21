@@ -20,7 +20,7 @@ for version in 8 9 10 11; do
 
   curl --fail --silent --show-error \
     --header "x-api-key: $api_key" \
-    "$base_url/api/tmgmt/blackbird/jobs?state=active" \
+    "$base_url/api/tmgmt/blackbird/jobs" \
     --output "$stage/jobs.json"
   curl --fail --silent --show-error \
     --header "x-api-key: $api_key" \
@@ -64,8 +64,7 @@ if not isinstance(jobs, list) or not jobs:
 if not {"en", "fr"}.issubset({language.get("id") for language in languages}):
     raise SystemExit("languages.json must contain en and fr")
 
-def one_job(kind):
-    label = f"Blackbird connector capture {kind} Drupal {version}"
+def one_job(kind, label):
     matches = [job for job in jobs if job.get("name") == label]
     if len(matches) != 1:
         raise SystemExit(f"Expected one {kind} job, found {len(matches)}")
@@ -76,8 +75,9 @@ def one_job(kind):
     int(job["created"])
     return job
 
-read_job = one_job("read")
-upload_job = one_job("upload")
+read_job = one_job("read", f"Blackbird connector capture read Drupal {version}")
+upload_job = one_job("upload", f"Blackbird connector capture upload Drupal {version}")
+status_job = one_job("status", f"Blackbird connector status transition Drupal {version}")
 job_id_match = re.search(r'<meta\s+name=["\']JobID["\']\s+content=["\']([^"\']+)', html, re.I)
 if not job_id_match or job_id_match.group(1) != read_job["id"]:
     raise SystemExit("job.html JobID does not match captured read job")
@@ -91,9 +91,13 @@ manifest = {
     "UploadJob": {key: upload_job[source] for key, source in {
         "Id": "id", "Name": "name", "Source": "source", "Target": "target", "Created": "created"
     }.items()},
+    "StatusJob": {key: status_job[source] for key, source in {
+        "Id": "id", "Name": "name", "Source": "source", "Target": "target", "Created": "created"
+    }.items()},
 }
 manifest["ReadJob"]["Created"] = int(manifest["ReadJob"]["Created"])
 manifest["UploadJob"]["Created"] = int(manifest["UploadJob"]["Created"])
+manifest["StatusJob"]["Created"] = int(manifest["StatusJob"]["Created"])
 (stage / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
 for path in stage.iterdir():

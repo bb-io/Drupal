@@ -16,5 +16,11 @@ public class JobIdentifier : IDownloadContentInput
     [StaticDataSource(typeof(DownloadFileFormatHandler))]
     public string? FileFormat { get; set; }
 
+    [Display("Accept job", Description = "Accept job after content is downloaded and uploaded to file manager")]
+    public bool? AcceptJob { get; set; } = true;
+
+    [Display("Note", Description = "Optional provider note shown on translation job. Maximum 255 characters; empty string clears note")]
+    public string? Note { get; set; }
+
     public override string ToString() => ContentId;
 }

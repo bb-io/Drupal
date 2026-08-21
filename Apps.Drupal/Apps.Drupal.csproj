@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <Product>Drupal</Product>
         <Description>Drupal is a free, open-source content management system (CMS) with a large, supportive community. It’s used by millions of people and organizations around the globe to build and maintain their websites.</Description>
-        <Version>2.0.2</Version>
+        <Version>2.0.4</Version>
         <PackageId>Apps.Drupal</PackageId>
         <AssemblyName>Apps.Drupal</AssemblyName>
         <RootNamespace>Apps.Drupal</RootNamespace>
@@ -16,7 +16,7 @@
         <PackageReference Include="Blackbird.Applications.SDK.Blueprints" Version="1.0.2" />
         <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.1.0" />
         <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.0.26" />
-        <PackageReference Include="Blackbird.Filters" Version="1.2.13" />
+        <PackageReference Include="Blackbird.Filters" Version="1.2.16" />
         <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Polly" Version="8.2.0" />
@@ -26,8 +26,8 @@
 
     <ItemGroup>
         <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png" />
-        <EmbeddedResource Include="..\readme.md">
-            <Link>readme.md</Link>
+        <EmbeddedResource Include="..\README.md">
+            <Link>README.md</Link>
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </EmbeddedResource>
     </ItemGroup>

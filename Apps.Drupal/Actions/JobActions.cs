@@ -39,6 +39,56 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         };
     }
 
+    [Action("Accept job", Description = "Accept an unprocessed translation job for processing")]
+    public async Task<AcceptJobResponse> AcceptJobAsync([ActionParameter] AcceptJobRequest input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/accept", Method.Post, Creds);
+        return await Client.ExecuteWithErrorHandling<AcceptJobResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-acceptance response.");
+    }
+
+    [Action("Get job note", Description = "Get provider note shown on a translation job")]
+    public async Task<JobNoteResponse> GetJobNoteAsync([ActionParameter] JobNoteIdentifier input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/note", Method.Get, Creds);
+        return await Client.ExecuteWithErrorHandling<JobNoteResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-note response.");
+    }
+
+    [Action("Set job note", Description = "Set provider note shown on a translation job")]
+    public async Task<JobNoteResponse> SetJobNoteAsync([ActionParameter] SetJobNoteRequest input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId))
+        {
+            throw new PluginMisconfigurationException("Job ID is required.");
+        }
+
+        if (input.Note is null)
+        {
+            throw new PluginMisconfigurationException("Note is required. Use an empty string to clear the note.");
+        }
+
+        if (input.Note.EnumerateRunes().Count() > 255)
+        {
+            throw new PluginMisconfigurationException("Note must not exceed 255 characters.");
+        }
+
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/note", Method.Post, Creds)
+            .AddJsonBody(new { note = input.Note });
+        return await Client.ExecuteWithErrorHandling<JobNoteResponse>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-note response.");
+    }
+
     [Action("Reject job", Description = "Reject an active translation job and record the reason in Drupal")]
     public async Task<RejectJobResponse> RejectJobAsync([ActionParameter] RejectJobRequest input)
     {
@@ -52,8 +102,8 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
             throw new PluginMisconfigurationException("Rejection reason is required.");
         }
 
-        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/error", Method.Post, Creds)
-            .AddJsonBody(new { message = input.RejectionReason.Trim() });
+        var request = new ApiRequest($"/api/tmgmt/blackbird/job/{input.JobId}/reject", Method.Post, Creds)
+            .AddJsonBody(new { reason = input.RejectionReason.Trim() });
 
         return await Client.ExecuteWithErrorHandling<RejectJobResponse>(request)
             ?? throw new PluginApplicationException("Drupal returned an empty job-rejection response.");
@@ -63,9 +113,14 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
     [BlueprintActionDefinition(BlueprintAction.DownloadContent)]
     public async Task<GetXliffFromJobResponse> GetXliffFromJobAsync([ActionParameter] JobIdentifier identifier)
     {
+        if (identifier.Note is not null && identifier.Note.EnumerateRunes().Count() > 255)
+        {
+            throw new PluginMisconfigurationException("Note must not exceed 255 characters.");
+        }
+
         var jobService = new JobService(Client, Creds);
         JobResponse? job = null;
-        foreach (var state in new[] { "active", "completed", "aborted" })
+        foreach (var state in new[] { "unprocessed", "active", "completed", "aborted" })
         {
             job = (await jobService.SearchJobsAsync(new SearchJobRequest { State = state }))
                 .FirstOrDefault(x => x.ContentId == identifier.ContentId);
@@ -88,13 +143,28 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         if (identifier.FileFormat == "original")
         {
             var originalStream = new MemoryStream(Encoding.UTF8.GetBytes(rawHtml));
-            return new GetXliffFromJobResponse
+            var result = new GetXliffFromJobResponse
             {
                 Content = await fileManagementClient.UploadAsync(
                     originalStream,
                     "text/html",
                     $"{identifier.ContentId}.html")
             };
+            if (identifier.Note is not null)
+            {
+                await SetJobNoteAsync(new SetJobNoteRequest
+                {
+                    JobId = identifier.ContentId,
+                    Note = identifier.Note
+                });
+            }
+
+            if (identifier.AcceptJob ?? true)
+            {
+                await AcceptJobAsync(new AcceptJobRequest { JobId = identifier.ContentId });
+            }
+
+            return result;
         }
 
         if (identifier.FileFormat is not null and not "text/html")
@@ -159,13 +229,28 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         }
 
         var outputStream = new MemoryStream(Encoding.UTF8.GetBytes(htmlDocument.DocumentNode.OuterHtml));
-        return new GetXliffFromJobResponse
+        var output = new GetXliffFromJobResponse
         {
             Content = await fileManagementClient.UploadAsync(
                 outputStream,
                 "text/html",
                 $"{identifier.ContentId}.html")
         };
+        if (identifier.Note is not null)
+        {
+            await SetJobNoteAsync(new SetJobNoteRequest
+            {
+                JobId = identifier.ContentId,
+                Note = identifier.Note
+            });
+        }
+
+        if (identifier.AcceptJob ?? true)
+        {
+            await AcceptJobAsync(new AcceptJobRequest { JobId = identifier.ContentId });
+        }
+
+        return output;
     }
 
     [Action("Upload job content", Description = "Upload translated content to a translation job and output content with updated metadata")]
@@ -252,7 +337,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         var jobId = input.ContentId ?? embeddedJobId!;
         var jobService = new JobService(Client, Creds);
         JobResponse? job = null;
-        foreach (var state in new[] { "active", "completed", "aborted" })
+        foreach (var state in new[] { "active", "unprocessed", "completed", "aborted" })
         {
             job = (await jobService.SearchJobsAsync(new SearchJobRequest { State = state }))
                 .FirstOrDefault(x => x.ContentId == jobId);

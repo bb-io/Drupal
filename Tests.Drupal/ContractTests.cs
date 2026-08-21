@@ -4,6 +4,7 @@ using Apps.Drupal.Models.Identifiers;
 using Apps.Drupal.Models.Requests;
 using Apps.Drupal.Models.Responses;
 using Apps.Drupal.Polling;
+using Blackbird.Applications.Sdk.Common.Polling;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 using Newtonsoft.Json;
@@ -71,8 +72,29 @@ public class ContractTests
 
         // Assert
         CollectionAssert.AreEquivalent(
-            new[] { "active", "rejected", "completed", "aborted" },
+            new[] { "unprocessed", "active", "rejected", "completed", "aborted" },
             states.Select(state => state.Value).ToArray());
+    }
+
+    [TestMethod]
+    public void EventNames_PollingEventsUseProductionNames()
+    {
+        // Arrange
+        var pollingMethods = new[]
+        {
+            typeof(PollingList).GetMethod(nameof(PollingList.OnTranslationJobRequested)),
+            typeof(PollingList).GetMethod(nameof(PollingList.OnJobStatusChanged))
+        };
+        // Act
+        var pollingNames = pollingMethods.Select(method => method!
+            .GetCustomAttributes(typeof(PollingEventAttribute), false)
+            .Cast<PollingEventAttribute>()
+            .Single()
+            .Name);
+        // Assert
+        CollectionAssert.AreEquivalent(
+            new[] { "On translation jobs requested", "On job statuses changed" },
+            pollingNames.ToArray());
     }
 
     [TestMethod]

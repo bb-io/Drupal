@@ -1,18 +1,25 @@
 {
   "Version": 11,
-  "CapturedAtUtc": "2026-07-16T15:43:42.494749Z",
+  "CapturedAtUtc": "2026-08-21T11:09:08.621391Z",
   "ReadJob": {
-    "Id": "13",
+    "Id": "112",
     "Name": "Blackbird connector capture read Drupal 11",
     "Source": "en",
     "Target": "fr",
-    "Created": 1784216621
+    "Created": 1787310547
   },
   "UploadJob": {
-    "Id": "14",
+    "Id": "113",
     "Name": "Blackbird connector capture upload Drupal 11",
     "Source": "en",
     "Target": "fr",
-    "Created": 1784216621
+    "Created": 1787310547
+  },
+  "StatusJob": {
+    "Id": "114",
+    "Name": "Blackbird connector status transition Drupal 11",
+    "Source": "en",
+    "Target": "fr",
+    "Created": 1787310547
   }
 }

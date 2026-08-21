@@ -9,6 +9,8 @@ public sealed class CaptureManifest
     public CapturedJob ReadJob { get; init; } = new();
 
     public CapturedJob UploadJob { get; init; } = new();
+
+    public CapturedJob StatusJob { get; init; } = new();
 }
 
 public sealed class CapturedJob

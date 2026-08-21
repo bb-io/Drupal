@@ -26,30 +26,131 @@ public class JobActionTests : TestBase
         var createdAfter = DateTimeOffset.FromUnixTimeSeconds(Manifest.ReadJob.Created - 1).UtcDateTime;
         var request = new SearchJobRequest
         {
-            State = "active",
+            State = "unprocessed",
             TargetLanguage = Manifest.ReadJob.Target,
-            CreatedAfter = createdAfter
+            CreatedAfter = createdAfter,
+            NoteContains = "workflow"
         };
 
         // Act
         var result = await actions.SearchJobsAsync(request);
 
         // Assert
-        Assert.AreEqual(2, result.TotalCount);
-        Assert.HasCount(2, result.Items);
+        Assert.AreEqual(3, result.TotalCount);
+        Assert.HasCount(3, result.Items);
         var readJob = result.Items.Single(job => job.ContentId == Manifest.ReadJob.Id);
         Assert.AreEqual(Manifest.ReadJob.Name, readJob.Name);
         Assert.AreEqual(Manifest.ReadJob.Source, readJob.Source);
         Assert.AreEqual(Manifest.ReadJob.Target, readJob.Target);
-        Assert.AreEqual("active", readJob.Status);
+        Assert.AreEqual("unprocessed", readJob.Status);
         Assert.AreEqual(
             DateTimeOffset.FromUnixTimeSeconds(Manifest.ReadJob.Created).UtcDateTime,
             readJob.CreationDate);
 
         var apiRequest = FixtureServer.LastRequest("GET", "/api/tmgmt/blackbird/jobs");
-        Assert.AreEqual("active", apiRequest.Query!["state"].Single());
+        Assert.AreEqual("unprocessed", apiRequest.Query!["state"].Single());
         Assert.AreEqual(Manifest.ReadJob.Target, apiRequest.Query["target"].Single());
         Assert.AreEqual((Manifest.ReadJob.Created - 1).ToString(), apiRequest.Query["created"].Single());
+        Assert.AreEqual("workflow", apiRequest.Query["note_contains"].Single());
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task SearchJobsAsync_NoState_UsesDrupalUnprocessedDefault(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var result = await actions.SearchJobsAsync(new SearchJobRequest());
+
+        // Assert
+        Assert.HasCount(3, result.Items);
+        Assert.IsTrue(result.Items.All(job => job.Status == "unprocessed"));
+        var request = FixtureServer.LastRequest("GET", "/api/tmgmt/blackbird/jobs");
+        Assert.IsTrue(request.Query is null || !request.Query.ContainsKey("state"));
+        Assert.IsTrue(request.Query is null || !request.Query.ContainsKey("note_contains"));
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task AcceptJobAsync_ValidInput_PostsAcceptAndReturnsActiveStatus(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var result = await actions.AcceptJobAsync(new AcceptJobRequest { JobId = Manifest.ReadJob.Id });
+
+        // Assert
+        Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
+        Assert.AreEqual("active", result.Status);
+        Assert.IsNotNull(FixtureServer.LastRequest(
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/accept"));
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task GetJobNoteAsync_ValidInput_ReturnsCurrentNote(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var result = await actions.GetJobNoteAsync(new JobNoteIdentifier { JobId = Manifest.ReadJob.Id });
+
+        // Assert
+        Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
+        Assert.AreEqual(string.Empty, result.Note);
+        Assert.IsNotNull(FixtureServer.LastRequest(
+            "GET", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/note"));
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task SetJobNoteAsync_ValidInput_PostsNoteAndReturnsCurrentNote(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var result = await actions.SetJobNoteAsync(new SetJobNoteRequest
+        {
+            JobId = Manifest.ReadJob.Id,
+            Note = "Blackbird workflow 12345"
+        });
+
+        // Assert
+        Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
+        Assert.AreEqual("Blackbird workflow 12345", result.Note);
+        var request = FixtureServer.LastRequest(
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/note");
+        Assert.AreEqual("Blackbird workflow 12345", JObject.Parse(request.Body!)["note"]?.Value<string>());
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task SetJobNoteAsync_TooLong_ThrowsWithoutCallingDrupal(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        var exception = await Assert.ThrowsExactlyAsync<PluginMisconfigurationException>(() =>
+            actions.SetJobNoteAsync(new SetJobNoteRequest
+            {
+                JobId = Manifest.ReadJob.Id,
+                Note = new string('x', 256)
+            }));
+
+        // Assert
+        StringAssert.Contains(exception.Message, "must not exceed 255 characters");
+        Assert.IsEmpty(FixtureServer.Requests);
     }
 
     [TestMethod]
@@ -71,9 +172,10 @@ public class JobActionTests : TestBase
         Assert.AreEqual(Manifest.ReadJob.Id, result.JobId);
         Assert.AreEqual("rejected", result.Status);
         var request = FixtureServer.LastRequest(
-            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/error");
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/reject");
         var body = JObject.Parse(request.Body!);
-        Assert.AreEqual("Translation workflow failed.", body["message"]?.Value<string>());
+        Assert.AreEqual("Translation workflow failed.", body["reason"]?.Value<string>());
+        Assert.IsNull(body["message"]);
     }
 
     [TestMethod]
@@ -117,6 +219,33 @@ public class JobActionTests : TestBase
         Assert.AreEqual($"{Manifest.ReadJob.Id}.html", result.Content.Name);
         Assert.AreEqual(Files.ReadInputText("job.html"), Files.ReadOutputText(result.Content));
         Assert.IsFalse(Files.ReadOutputText(result.Content).Contains("blackbird-ucid", StringComparison.Ordinal));
+        Assert.IsNotNull(FixtureServer.LastRequest(
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/accept"));
+    }
+
+    [TestMethod]
+    [DrupalVersionDataSource]
+    public async Task GetXliffFromJobAsync_NoteProvided_SetsNoteWithoutAcceptingWhenDisabled(int version)
+    {
+        // Arrange
+        var context = StartFixture(version);
+        var actions = new JobActions(context, Files);
+
+        // Act
+        await actions.GetXliffFromJobAsync(new JobIdentifier
+        {
+            ContentId = Manifest.ReadJob.Id,
+            AcceptJob = false,
+            Note = "Blackbird workflow 12345"
+        });
+
+        // Assert
+        var noteRequest = FixtureServer.LastRequest(
+            "POST", $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/note");
+        Assert.AreEqual("Blackbird workflow 12345", JObject.Parse(noteRequest.Body!)["note"]?.Value<string>());
+        Assert.IsFalse(FixtureServer.Requests.Any(request =>
+            request.Method == "POST" &&
+            request.Path == $"/api/tmgmt/blackbird/job/{Manifest.ReadJob.Id}/accept"));
     }
 
     [TestMethod]

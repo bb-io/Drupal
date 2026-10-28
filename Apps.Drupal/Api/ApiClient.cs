@@ -14,7 +14,7 @@ namespace Apps.Drupal.Api;
 
 public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credentials) : BlackBirdRestClient(new()
 {
-    BaseUrl = new Uri(credentials.Get(CredsNames.BaseUrl).Value)
+    BaseUrl = GetBaseUrl(credentials)
 })
 {
     private const int RetryCount = 3;
@@ -94,5 +94,14 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
         }
 
         return null;
+    }
+
+    private static Uri GetBaseUrl(IEnumerable<AuthenticationCredentialsProvider> creds)
+    {
+        string urlValue = creds.Get(CredsNames.BaseUrl).Value;
+        if (!Uri.TryCreate(urlValue, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            throw new PluginMisconfigurationException("Invalid URL format. Expected https://drupal.example.com");
+
+        return uri;
     }
 }

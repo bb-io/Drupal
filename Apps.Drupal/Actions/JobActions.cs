@@ -253,6 +253,26 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
         return output;
     }
 
+    [Action("Get job items", Description = "Get every item in a translation job, with metadata and content type summary")]
+    public async Task<GetJobItemsResponse> GetJobItemsAsync([ActionParameter] JobItemsIdentifier input)
+    {
+        if (string.IsNullOrWhiteSpace(input.JobId) ||
+            !input.JobId.All(c => c is >= '0' and <= '9'))
+        {
+            throw new PluginMisconfigurationException("A numeric Job ID is required.");
+        }
+
+        var request = new ApiRequest(
+            $"/api/tmgmt/blackbird/job/{input.JobId}/items",
+            Method.Get,
+            Creds);
+
+        var items = await Client.ExecuteWithErrorHandling<List<JobItemResponse>>(request)
+            ?? throw new PluginApplicationException("Drupal returned an empty job-items response.");
+
+        return GetJobItemsResponse.FromItems(items);
+    }
+
     [Action("Upload job content", Description = "Upload translated content to a translation job and output content with updated metadata")]
     [BlueprintActionDefinition(BlueprintAction.UploadContent)]
     public async Task<GetXliffFromJobResponse> TranslateJobAsync([ActionParameter] TranslateJobRequest input)

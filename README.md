@@ -71,6 +71,7 @@ For multi-language checkout, select all target languages in Drupal and leave **S
 - **Get job note**: Get provider note shown under **Provider information** on translation job page.
 - **Set job note**: Set provider note shown under **Provider information**. Maximum 255 characters; empty string clears note.
 - **Reject job**: Reject active translation job and record supplied reason in Drupal. Repeated rejection requests for same rejected job are idempotent.
+- **Get job items**: Get details about the items in the job. This includes content type and source URL.
 
 ## Events
 

@@ -254,7 +254,7 @@ public class JobActions(InvocationContext invocationContext, IFileManagementClie
     }
 
     [Action("Get job items", Description = "Get every item in a translation job, with metadata and content type summary")]
-    public async Task<GetJobItemsResponse> GetJobItemsAsync([ActionParameter] JobItemsIdentifier input)
+    public async Task<GetJobItemsResponse> GetJobItemsAsync([ActionParameter] JobNoteIdentifier input)
     {
         if (string.IsNullOrWhiteSpace(input.JobId) ||
             !input.JobId.All(c => c is >= '0' and <= '9'))

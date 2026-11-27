@@ -6,7 +6,7 @@ Blackbird is the new automation backbone for the language technology industry. B
 
 <!-- begin docs -->
 
-Drupal integration uses Translation Management Tool (TMGMT) jobs. Unlike CMS integrations that watch page changes, this app receives translation jobs already assembled by TMGMT. One job can contain fields from one or more pages or other Drupal content items.
+The Drupal integration uses the Translation Management Tool (TMGMT). One translation job can contain fields from one or more Drupal items.
 
 ## TMGMT Blackbird module
 
@@ -14,11 +14,11 @@ Install and configure the [TMGMT Blackbird module](https://git.drupalcode.org/pr
 
 ### Requirements
 
-The module requires [Translation Management Tool (TMGMT)](https://www.drupal.org/project/tmgmt).
+The module supports Drupal 10.3 or later in the Drupal 10 series and Drupal 11. It requires [Translation Management Tool (TMGMT)](https://www.drupal.org/project/tmgmt) 1.18 or later in the 1.x series and PHP 8.1 or later. Use the higher minimum required by your Drupal and TMGMT releases.
 
 ### Installation
 
-Install the module as a contributed Drupal module. See [Installing contributed modules](https://www.drupal.org/docs/8/extending-drupal-8/installing-contributed-modules) for Drupal instructions.
+Install the module as a contributed Drupal module. See [Installing contributed modules](https://www.drupal.org/docs/extending-drupal/installing-modules) for Drupal instructions.
 
 ### Configuration
 
@@ -73,6 +73,14 @@ For multi-language checkout, select all target languages in Drupal and leave **S
 - **Reject job**: Reject active translation job and record supplied reason in Drupal. Repeated rejection requests for same rejected job are idempotent.
 - **Get job items**: Get details about the items in the job. This includes content type and source URL.
 
+### Sources (Beta)
+
+- **Get source node (Beta)** returns metadata for the node’s default revision by numeric **Node ID**.
+- **Download source content (Beta)** exports one locale of a **Node ID** as HTML, including text in nested Paragraphs. **Source language** defaults to the node’s original language.
+- **Upload source content (Beta)** updates source content directly in Drupal without translation job workflows, by default it creates a node draft.
+
+When working with sources app retries rate-limit responses, HTTP 504 responses, and `409 concurrent_write` responses. For a field or reference conflict, review the submitted field in Drupal. For HTTP 504, verify the target revision or latest draft before retrying.
+
 ## Events
 
 ### Translation jobs
@@ -88,8 +96,6 @@ For multi-language checkout, select all target languages in Drupal and leave **S
 ## Error handling
 
 Errors include the status code and message returned by Drupal where available. Confirm the Job ID, target language, API key, and connection Base URL before retrying.
-
-Example error message: `Status code: 404, Error: Page not found | Blackbird Demo`
 
 ## Feedback
 

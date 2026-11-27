@@ -1,6 +1,6 @@
 # Drupal connector tests
 
-Tests run production connector flows against checked-in captures and local Drupal 8–11 instances without category separation. Seed demo jobs and run complete suite:
+Tests run production connector flows against checked-in captures and local Drupal 10 and 11 instances without category separation. Seed demo jobs and run complete suite:
 
 ```bash
 Tests.Drupal/Live/run-demo-tests.sh

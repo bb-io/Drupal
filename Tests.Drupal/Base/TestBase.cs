@@ -8,7 +8,7 @@ namespace Tests.Drupal.Base;
 
 public abstract class TestBase
 {
-    public static readonly int[] SupportedVersions = [8, 9, 10, 11];
+    public static readonly int[] SupportedVersions = [10, 11];
 
     private FixtureApiServer? fixtureServer;
 
@@ -66,7 +66,7 @@ public abstract class TestBase
         var configuredContexts = configuration.GetSection("LiveContexts").GetChildren().ToList();
         if (configuredContexts.Count != SupportedVersions.Length)
         {
-            throw new InvalidDataException("LiveContexts must contain four entries ordered for Drupal 8, 9, 10, and 11.");
+            throw new InvalidDataException($"LiveContexts must contain one entry for each supported Drupal version, in this order: {string.Join(", ", SupportedVersions)}.");
         }
 
         var contexts = configuredContexts

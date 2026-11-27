@@ -7,7 +7,7 @@ demo_dir="${DEMO_DRUPAL_DIR:-$repo_dir/../demo-drupal}"
 
 cd "$demo_dir"
 
-versions="${DRUPAL_VERSIONS:-8 9 10 11}"
+versions="${DRUPAL_VERSIONS:-10 11}"
 
 for version in $versions; do
   service="drupal${version}"

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using Apps.Drupal.Constants;
@@ -21,10 +22,32 @@ public class ApiClient(IEnumerable<AuthenticationCredentialsProvider> credential
     private static readonly Random Jitter = new();
 
     private readonly AsyncRetryPolicy<RestResponse> _retryPolicy = Policy
-        .HandleResult<RestResponse>(r => r.StatusCode == HttpStatusCode.GatewayTimeout || r.StatusCode == HttpStatusCode.TooManyRequests)
+        .HandleResult<RestResponse>(ShouldRetry)
         .WaitAndRetryAsync(RetryCount, attempt =>
             TimeSpan.FromSeconds(Math.Pow(2, attempt)) + TimeSpan.FromMilliseconds(Jitter.Next(0, 500)),
             (_, _, _, _) => Task.CompletedTask);
+
+    private static bool ShouldRetry(RestResponse response)
+    {
+        if (response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.GatewayTimeout)
+            return true;
+
+        if (response.StatusCode != HttpStatusCode.Conflict || string.IsNullOrEmpty(response.Content))
+            return false;
+
+        try
+        {
+            using var json = JsonDocument.Parse(response.Content);
+            return json.RootElement.ValueKind == JsonValueKind.Object
+                && json.RootElement.TryGetProperty("code", out var code)
+                && code.ValueKind == JsonValueKind.String
+                && code.GetString() == "concurrent_write";
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
 
     public override async Task<RestResponse> ExecuteWithErrorHandling(RestRequest request)
     {

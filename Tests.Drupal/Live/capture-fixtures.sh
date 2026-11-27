@@ -8,10 +8,8 @@ input_root="$repo_dir/Tests.Drupal/TestFiles/Input"
 "$repo_dir/Tests.Drupal/Live/prepare-demo.sh"
 mkdir -p "$input_root"
 
-for version in 8 9 10 11; do
+for version in 10 11; do
   case "$version" in
-    8) base_url="http://localhost:8088" ;;
-    9) base_url="http://localhost:8099" ;;
     10) base_url="http://localhost:8010" ;;
     11) base_url="http://localhost:8011" ;;
   esac

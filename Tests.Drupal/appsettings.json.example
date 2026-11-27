@@ -1,14 +1,6 @@
 {
   "LiveContexts": [
     {
-      "BaseUrl": "http://localhost:8088",
-      "ApiKey": "blackbird-live-key-drupal-8"
-    },
-    {
-      "BaseUrl": "http://localhost:8099",
-      "ApiKey": "blackbird-live-key-drupal-9"
-    },
-    {
       "BaseUrl": "http://localhost:8010",
       "ApiKey": "blackbird-live-key-drupal-10"
     },
